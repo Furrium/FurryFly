@@ -1,0 +1,932 @@
+import {reviewText} from '../../utils/reviewText';
+import React, {Component} from 'react';
+import {shell} from 'electron';
+import {withRouter} from 'react-router-dom';
+import {connect} from 'react-redux';
+import PropTypes from 'prop-types';
+import {I18nContext} from '../../utils/i18n';
+import DocsHelp from '../../components/DocsHelp';
+import walletClient from '../../utils/walletClient';
+import {clientStub as settingClientStub} from '../../background/setting/client';
+import {
+  DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST,
+  LIQUIDITY_SPOT_CHANNEL_LIST_STORAGE_KEY,
+  LIQUIDITY_SPOT_CHANNEL_STORAGE_KEY,
+  getLiquiditySpotChannelUrl,
+  mergeLiquiditySpotChannels,
+  normalizeLiquiditySpotHost,
+} from '../../constants/liquiditySpotChannels';
+import './addons.scss';
+import {
+  getLiquiditySwapRoomUrl,
+  getSafeLiquidityIntentUrl,
+} from '../../utils/urlPolicy';
+import {createBuiltInCatalog} from '../../addons/manifests';
+import {liquidityChannelErrorText} from '../../utils/liquidityChannelErrors';
+const BRAND = require('../../constants/branding');
+
+const settingClient = settingClientStub(() => require('electron').ipcRenderer);
+
+export const ADDONS = createBuiltInCatalog([
+  {
+    manifestId: 'shakex',
+    descriptionKey: 'shakexAddonDescription',
+    statusKey: 'shakexAvailable',
+    actionKey: 'shakexOpen',
+    status: 'Available',
+    description: 'Community name listings by Marioo. Browse asking prices, seller contacts and the FurryFly paid-transfer guide.',
+    action: 'Open',
+  },
+  {
+    manifestId: 'shakedex-marketplace',
+    nameKey: 'learnHnsMarketplace',
+    statusKey: 'available',
+    descriptionKey: 'addonShakedexDescription',
+    actionKey: 'open',
+    status: 'Available',
+    description: 'Browse pending and active Shakedex channel listings from inside FurryFly.',
+    action: 'Open',
+  },
+  {
+    manifestId: 'send-name',
+    nameKey: 'sendNameTab',
+    statusKey: 'available',
+    descriptionKey: 'addonSendNameDescription',
+    actionKey: 'open',
+    status: 'Available',
+    description: 'Send or sell a domain directly to another user with a paid claim payload.',
+    action: 'Open',
+  },
+  {
+    manifestId: 'liquidity-spot',
+    statusKey: 'addonPublicPreview',
+    descriptionKey: 'addonLiquidityChannelDescription',
+    actionKey: 'open',
+    externalNoticeKey: 'addonLiquidityExternalNotice',
+    status: 'Public Preview',
+    action: 'Open',
+    docsHref: `${BRAND.siteUrl}/docs/liquidity-spot`,
+    externalNotice: 'Liquidity opens outside FurryFly. FurryFly will not share your seed phrase, private keys, wallet password, or signing permissions with this Add On.',
+    detailKeys: ['addonLiquidityGuestDetail', 'addonLiquidityAccountDetail', 'addonLiquiditySwapDetail', 'addonLiquidityPermissionsDetail'],
+  },
+  {
+    id: 'resolver-directory',
+    nameKey: 'addonResolverDirectoryName',
+    descriptionKey: 'addonResolverDirectoryDescription',
+    statusKey: 'addonPlanned',
+    name: 'Resolver Directory',
+    status: 'Planned',
+    description: 'Find working Handshake resolvers and see their health before changing your setup.',
+  },
+  {
+    id: 'agentic-web',
+    nameKey: 'addonAgenticWebName',
+    descriptionKey: 'addonAgenticWebDescription',
+    statusKey: 'addonResearch',
+    name: 'Agentic Web',
+    status: 'Research',
+    description: 'Agent-friendly tools built around HNS TXT records and the hns.bio standard.',
+  },
+  {
+    id: 'sld-manager',
+    nameKey: 'addonSldManagerName',
+    descriptionKey: 'addonSldManagerDescription',
+    statusKey: 'addonResearch',
+    name: 'SLD Manager',
+    status: 'Research',
+    description: 'Help TLD owners run nameservers and manage second-level domains without DNS guesswork.',
+  },
+]);
+
+export class Addons extends Component {
+  static propTypes = {
+    history: PropTypes.object.isRequired,
+    location: PropTypes.object.isRequired,
+    deeplinkParams: PropTypes.object,
+  };
+
+  static contextType = I18nContext;
+
+  state = {
+    pendingExternalAddon: null,
+    liquiditySpotHost: DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST,
+    liquiditySpotDraftHost: DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST,
+    liquiditySpotChannels: [],
+    liquiditySpotChannelError: '',
+    liquiditySwapIntent: null,
+    liquiditySwapIntentLoading: false,
+    liquiditySwapIntentError: '',
+    liquiditySwapActionNotice: '',
+    liquiditySwapLocalKeys: {},
+    liquiditySwapActionLoading: false,
+    liquidityChannel: null,
+    liquidityChannelLoading: false,
+    liquidityChannelError: '',
+  };
+
+  componentDidMount() {
+    const storedHost = normalizeLiquiditySpotHost(
+      window.localStorage.getItem(LIQUIDITY_SPOT_CHANNEL_STORAGE_KEY),
+    ) || DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST;
+    const storedChannels = this.getStoredLiquiditySpotChannels();
+
+    this.setState({
+      liquiditySpotHost: storedHost,
+      liquiditySpotDraftHost: storedHost,
+      liquiditySpotChannels: mergeLiquiditySpotChannels(storedChannels),
+    });
+    this.loadLiquidityChannel(storedHost);
+    this.loadLiquiditySwapIntent(this.props.deeplinkParams?.liquiditySwapIntentUrl);
+  }
+
+  componentDidUpdate(prevProps) {
+    const previousIntentUrl = prevProps.deeplinkParams?.liquiditySwapIntentUrl;
+    const currentIntentUrl = this.props.deeplinkParams?.liquiditySwapIntentUrl;
+
+    if (previousIntentUrl !== currentIntentUrl) {
+      this.loadLiquiditySwapIntent(currentIntentUrl);
+    }
+  }
+
+  async loadLiquidityChannel(host = this.state.liquiditySpotHost) {
+    this.setState({
+      liquidityChannelLoading: true,
+      liquidityChannelError: '',
+    });
+
+    try {
+      const channel = await settingClient.getLiquidityChannel(host);
+
+      this.setState({
+        liquidityChannel: channel,
+        liquidityChannelLoading: false,
+      });
+    } catch (e) {
+      this.setState({
+        liquidityChannel: null,
+        liquidityChannelLoading: false,
+        liquidityChannelError: liquidityChannelErrorText(this.context.t, e && e.code, e && e.status),
+      });
+    }
+  }
+
+  getStoredLiquiditySpotChannels() {
+    try {
+      return JSON.parse(window.localStorage.getItem(LIQUIDITY_SPOT_CHANNEL_LIST_STORAGE_KEY) || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  persistLiquiditySpotChannels(channels) {
+    window.localStorage.setItem(LIQUIDITY_SPOT_CHANNEL_LIST_STORAGE_KEY, JSON.stringify(channels));
+  }
+
+  openAddon(addon) {
+    if (!addon.href)
+      return;
+
+    if (addon.internal) {
+      this.props.history.push(addon.href);
+      return;
+    }
+
+    this.setState({pendingExternalAddon: addon});
+  }
+
+  saveLiquiditySpotChannel() {
+    const host = normalizeLiquiditySpotHost(this.state.liquiditySpotDraftHost);
+    if (!host) {
+      this.setState({liquiditySpotChannelError: 'addonLiquidityChannelInvalid'});
+      return;
+    }
+
+    window.localStorage.setItem(LIQUIDITY_SPOT_CHANNEL_STORAGE_KEY, host);
+    const channels = mergeLiquiditySpotChannels([
+      ...this.state.liquiditySpotChannels,
+      {host, label: host},
+    ]);
+    this.persistLiquiditySpotChannels(channels);
+    this.setState({
+      liquiditySpotHost: host,
+      liquiditySpotDraftHost: host,
+      liquiditySpotChannels: channels,
+      liquiditySpotChannelError: '',
+    }, () => this.loadLiquidityChannel(host));
+  }
+
+  resetLiquiditySpotChannel() {
+    window.localStorage.removeItem(LIQUIDITY_SPOT_CHANNEL_STORAGE_KEY);
+    this.setState({
+      liquiditySpotHost: DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST,
+      liquiditySpotDraftHost: DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST,
+      liquiditySpotChannels: mergeLiquiditySpotChannels(),
+      liquiditySpotChannelError: '',
+    }, () => this.loadLiquidityChannel(DEFAULT_LIQUIDITY_SPOT_CHANNEL_HOST));
+  }
+
+  confirmExternalAddon() {
+    const {pendingExternalAddon} = this.state;
+
+    if (!pendingExternalAddon)
+      return;
+
+    shell.openExternal(pendingExternalAddon.href);
+    this.setState({pendingExternalAddon: null});
+  }
+
+  cancelExternalAddon() {
+    this.setState({pendingExternalAddon: null});
+  }
+
+  openLiquiditySwapIntent() {
+    const {deeplinkParams} = this.props;
+    const intentUrl = deeplinkParams?.liquiditySwapIntentUrl;
+
+    const safeIntentUrl = getSafeLiquidityIntentUrl(intentUrl);
+    if (safeIntentUrl) {
+      shell.openExternal(safeIntentUrl);
+    }
+  }
+
+  openLiquiditySwapRoom() {
+    const {deeplinkParams} = this.props;
+    const intentUrl = deeplinkParams?.liquiditySwapIntentUrl;
+
+    const roomUrl = getLiquiditySwapRoomUrl(intentUrl);
+    if (!roomUrl)
+      return;
+    shell.openExternal(roomUrl);
+  }
+
+  openLiquidityChannelPath(path) {
+    shell.openExternal(getLiquiditySpotChannelUrl(this.state.liquiditySpotHost, path));
+  }
+
+  async loadLiquiditySwapIntent(intentUrl) {
+    const safeIntentUrl = getSafeLiquidityIntentUrl(intentUrl);
+    if (!safeIntentUrl) {
+      this.setState({
+        liquiditySwapIntent: null,
+        liquiditySwapIntentLoading: false,
+        liquiditySwapIntentError: '',
+        liquiditySwapActionNotice: '',
+      });
+      return;
+    }
+
+    this.setState({
+      liquiditySwapIntent: null,
+      liquiditySwapIntentLoading: true,
+      liquiditySwapIntentError: '',
+      liquiditySwapActionNotice: '',
+    });
+
+    try {
+      const response = await fetch(safeIntentUrl);
+
+      if (!response.ok)
+        throw new Error(`Liquidity.spot returned ${response.status}`);
+
+      const intent = await response.json();
+
+      this.setState({
+        liquiditySwapIntent: intent,
+        liquiditySwapLocalKeys: this.getStoredLiquiditySwapKeys(intent.swap_id),
+        liquiditySwapIntentLoading: false,
+      });
+    } catch (e) {
+      this.setState({
+        liquiditySwapIntentLoading: false,
+        liquiditySwapIntentError: e.message || 'addonsCatalogSwapIntentLoadErr',
+      });
+    }
+  }
+
+  prepareLiquiditySwapAction(action) {
+    this.setState({
+      liquiditySwapActionNotice: reviewText(this.context.t, 'addonsCatalogSwapActionPreview', action),
+    });
+  }
+
+  getLiquiditySwapKeyStorageKey(swapId) {
+    return `liquiditySwap/${swapId}/hnsKeys`;
+  }
+
+  getStoredLiquiditySwapKeys(swapId) {
+    if (!swapId)
+      return {};
+
+    try {
+      return JSON.parse(window.localStorage.getItem(this.getLiquiditySwapKeyStorageKey(swapId)) || '{}');
+    } catch (e) {
+      return {};
+    }
+  }
+
+  storeLiquiditySwapKeys(swapId, keys) {
+    if (!swapId)
+      return;
+
+    window.localStorage.setItem(this.getLiquiditySwapKeyStorageKey(swapId), JSON.stringify(keys));
+    this.setState({liquiditySwapLocalKeys: keys});
+  }
+
+  async postLiquiditySwapMetadata(payload) {
+    const {liquiditySwapIntent} = this.state;
+    const metadataUrl = liquiditySwapIntent?.hns_lock?.metadata_callback?.url
+      || liquiditySwapIntent?.claims?.bob_hns_claim?.metadata_callback?.url;
+
+    if (!metadataUrl)
+      throw new Error('This intent does not include an HNS metadata callback.');
+
+    const response = await fetch(metadataUrl, {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+
+    if (!response.ok)
+      throw new Error(data.error || `Liquidity.spot returned ${response.status}`);
+
+    await this.loadLiquiditySwapIntent(this.props.deeplinkParams?.liquiditySwapIntentUrl);
+    return data;
+  }
+
+  async postLiquiditySwapTxid(callback, payload) {
+    if (!callback?.url)
+      throw new Error('This intent does not include a TXID callback.');
+
+    const response = await fetch(callback.url, {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+
+    if (!response.ok)
+      throw new Error(data.error || `Liquidity.spot returned ${response.status}`);
+
+    await this.loadLiquiditySwapIntent(this.props.deeplinkParams?.liquiditySwapIntentUrl);
+    return data;
+  }
+
+  async generateLiquidityHnsKey(kind) {
+    const {liquiditySwapIntent, liquiditySwapLocalKeys} = this.state;
+
+    if (!liquiditySwapIntent)
+      return;
+
+    this.setState({liquiditySwapActionLoading: true, liquiditySwapActionNotice: ''});
+
+    try {
+      const key = await walletClient.createLiquidityHnsSwapKey();
+      const nextKeys = {
+        ...liquiditySwapLocalKeys,
+        [kind]: key,
+      };
+      this.storeLiquiditySwapKeys(liquiditySwapIntent.swap_id, nextKeys);
+
+      const payload = kind === 'claim'
+        ? {hns_claim_public_key: key.publicKey}
+        : {hns_refund_public_key: key.publicKey};
+      await this.postLiquiditySwapMetadata(payload);
+      this.setState({
+        liquiditySwapActionNotice: reviewText(
+          this.context.t,
+          'addonsCatalogSwapKeySaved',
+          reviewText(
+            this.context.t,
+            kind === 'claim' ? 'addonsCatalogSwapKeySavedBobClaim' : 'addonsCatalogSwapKeySavedAliceRefund',
+          ),
+        ),
+      });
+    } catch (e) {
+      this.setState({liquiditySwapActionNotice: e.message || reviewText(this.context.t, 'addonsCatalogSwapKeyErr')});
+    } finally {
+      this.setState({liquiditySwapActionLoading: false});
+    }
+  }
+
+  async lockLiquidityHns() {
+    const {liquiditySwapIntent, liquiditySwapLocalKeys} = this.state;
+    const hnsLock = liquiditySwapIntent?.hns_lock || {};
+    const refundKey = liquiditySwapLocalKeys.refund;
+
+    this.setState({liquiditySwapActionLoading: true, liquiditySwapActionNotice: ''});
+
+    try {
+      if (!refundKey?.publicKey)
+        throw new Error('Generate the Alice refund key in this wallet before locking HNS.');
+      if (!hnsLock.claim_public_key)
+        throw new Error('Waiting for Bob claim public key before locking HNS.');
+
+      const lock = await walletClient.createLiquidityHnsLock({
+        amountDollary: hnsLock.amount_dollary,
+        secretHash: hnsLock.secret_hash_sha256,
+        claimPublicKey: hnsLock.claim_public_key,
+        refundPublicKey: refundKey.publicKey,
+        refundLocktime: hnsLock.refund_locktime,
+        timelockBlocksEstimate: hnsLock.timelock_blocks_estimate,
+      });
+
+      await this.postLiquiditySwapMetadata({
+        hns_refund_public_key: refundKey.publicKey,
+        hns_lock_address: lock.htlcAddress,
+        hns_lock_script: lock.htlcScript,
+        hns_lock_value: lock.value,
+        hns_lock_output_index: lock.htlcOutputIndex,
+        hns_refund_locktime: lock.refundLocktime,
+      });
+      await this.postLiquiditySwapTxid(hnsLock.callback, {
+        txid: lock.txid,
+        hns_lock_address: lock.htlcAddress,
+        hns_lock_script: lock.htlcScript,
+        hns_lock_value: lock.value,
+        hns_lock_output_index: lock.htlcOutputIndex,
+        hns_refund_locktime: lock.refundLocktime,
+      });
+      this.setState({liquiditySwapActionNotice: reviewText(this.context.t, 'addonsCatalogHnsLocked', lock.txid)});
+    } catch (e) {
+      this.setState({liquiditySwapActionNotice: e.message || reviewText(this.context.t, 'addonsCatalogHnsLockErr')});
+    } finally {
+      this.setState({liquiditySwapActionLoading: false});
+    }
+  }
+
+  async claimLiquidityHns() {
+    const {liquiditySwapIntent, liquiditySwapLocalKeys} = this.state;
+    const bobClaim = liquiditySwapIntent?.claims?.bob_hns_claim || {};
+    const claimKey = liquiditySwapLocalKeys.claim;
+
+    this.setState({liquiditySwapActionLoading: true, liquiditySwapActionNotice: ''});
+
+    try {
+      if (!claimKey?.address)
+        throw new Error('Generate the Bob claim key in this wallet before claiming HNS.');
+      if (!bobClaim.revealed_secret)
+        throw new Error('Waiting for Alice to reveal the secret on the BTC claim.');
+      if (!bobClaim.alice_lock_txid || bobClaim.alice_lock_output_index == null)
+        throw new Error('Waiting for Alice HNS lock TXID and output index.');
+
+      const claim = await walletClient.createLiquidityHnsClaim({
+        txid: bobClaim.alice_lock_txid,
+        index: bobClaim.alice_lock_output_index,
+        signerAddress: claimKey.address,
+        secret: bobClaim.revealed_secret,
+        secretHash: bobClaim.secret_hash_sha256,
+        claimPublicKey: claimKey.publicKey,
+        refundPublicKey: bobClaim.refund_public_key,
+        refundLocktime: bobClaim.refund_locktime,
+      });
+
+      await this.postLiquiditySwapTxid(bobClaim.callback, {txid: claim.txid});
+      this.setState({liquiditySwapActionNotice: reviewText(this.context.t, 'addonsCatalogHnsClaimed', claim.txid)});
+    } catch (e) {
+      this.setState({liquiditySwapActionNotice: e.message || reviewText(this.context.t, 'addonsCatalogHnsClaimErr')});
+    } finally {
+      this.setState({liquiditySwapActionLoading: false});
+    }
+  }
+
+  renderLiquiditySwapIntentDetails(intent) {
+    if (!intent)
+      return null;
+
+    const hnsLock = intent.hns_lock || {};
+    const btcLock = intent.btc_lock || {};
+    const bobClaim = intent.claims?.bob_hns_claim || {};
+    const hnsHtlc = intent.hns_htlc || {};
+    const amounts = intent.amounts || {};
+    const participants = intent.participants || {};
+    const {t} = this.context;
+
+    return (
+      <>
+        <dl className="addons-page__swap-intent-details">
+          <div>
+            <dt>{t('addonsCatalogSwapId')}</dt>
+            <dd>#{intent.swap_id || t('addonsCatalogSwapIdPending')}</dd>
+          </div>
+          <div>
+            <dt>{t('status')}</dt>
+            <dd>{intent.status || t('addonsCatalogUnknownStatus')}</dd>
+          </div>
+          <div>
+            <dt>{t('addonsCatalogHnsAmount')}</dt>
+            <dd>{amounts.hns || hnsLock.amount_hns || '-'}</dd>
+          </div>
+          <div>
+            <dt>{t('addonsCatalogBtcAmount')}</dt>
+            <dd>{amounts.btc || btcLock.amount_btc || '-'}</dd>
+          </div>
+          <div>
+            <dt>Alice</dt>
+            <dd>{participants.alice_user_id || '-'}</dd>
+          </div>
+          <div>
+            <dt>Bob</dt>
+            <dd>{participants.bob_user_id || '-'}</dd>
+          </div>
+        </dl>
+        <div className="addons-page__swap-intent-section">
+          <h4>{t('addonsCatalogHnsLockTerms')}</h4>
+          <dl className="addons-page__swap-intent-details">
+            <div>
+              <dt>{t('addonsCatalogSecretHash')}</dt>
+              <dd>{intent.secret_hash_sha256 || hnsLock.secret_hash_sha256 || '-'}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogTimelock')}</dt>
+              <dd>{hnsLock.timelock_blocks ? t('addonsCatalogTimelockBlocks', hnsLock.timelock_blocks) : '-'}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogBobClaimKey')}</dt>
+              <dd>{hnsLock.claim_public_key || hnsHtlc.claim_public_key || t('addonsCatalogWaitingForBob')}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogAliceRefundKey')}</dt>
+              <dd>{hnsLock.refund_public_key || hnsHtlc.refund_public_key || t('addonsCatalogWaitingForAlice')}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogHtlcAddress')}</dt>
+              <dd>{hnsLock.htlc_address || hnsHtlc.lock_address || '-'}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogCallback')}</dt>
+              <dd>{hnsLock.callback?.url || '-'}</dd>
+            </div>
+          </dl>
+        </div>
+        <div className="addons-page__swap-intent-section">
+          <h4>{t('addonsCatalogClaimTerms')}</h4>
+          <dl className="addons-page__swap-intent-details">
+            <div>
+              <dt>{t('addonsCatalogRevealedSecret')}</dt>
+              <dd>{bobClaim.revealed_secret || t('addonsCatalogNotRevealedYet')}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogLockOutput')}</dt>
+              <dd>{bobClaim.alice_lock_output_index ?? hnsHtlc.lock_output_index ?? t('addonsCatalogWaitingForAliceLock')}</dd>
+            </div>
+            <div>
+              <dt>{t('addonsCatalogCallback')}</dt>
+              <dd>{bobClaim.callback?.url || '-'}</dd>
+            </div>
+          </dl>
+        </div>
+      </>
+    );
+  }
+
+  renderLiquidityChannelListings() {
+    const {liquidityChannel, liquidityChannelLoading, liquidityChannelError} = this.state;
+    const p2pOffers = liquidityChannel?.p2p?.offers || [];
+    const atomicOrders = liquidityChannel?.atomic_swaps?.orders || [];
+    const {t} = this.context;
+
+    return (
+      <div className="addons-page__liquidity-channel">
+        <div className="addons-page__channel-card">
+          <div className="addons-page__liquidity-header">
+            <div>
+              <h3>{t('addonsCatalogSourceChannel')}</h3>
+              <p>
+                {t('addonsCatalogListingsFrom', liquidityChannel?.name || this.state.liquiditySpotHost)}
+              </p>
+            </div>
+            <button onClick={() => this.loadLiquidityChannel()}>
+              {t('refresh')}
+            </button>
+          </div>
+          {liquidityChannelLoading && (
+            <div className="addons-page__swap-intent-message">
+              {t('addonsCatalogLoadingListings')}
+            </div>
+          )}
+          {liquidityChannelError && (
+            <div className="addons-page__channel-error">
+              {reviewText(t, liquidityChannelError)}
+            </div>
+          )}
+          {liquidityChannel?.requirements?.bob_wallet && (
+            <div className="addons-page__swap-intent-message">
+              {liquidityChannel.requirements.bob_wallet}{' '}
+              <button onClick={() => shell.openExternal(liquidityChannel.requirements.bob_wallet_download_url)}>
+                {t('addonsCatalogDownloadBob')}
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="addons-page__listing-grid">
+          {this.renderLiquidityListingTable({
+            title: t('addonsCatalogP2pOffers'),
+            empty: t('addonsCatalogP2pOffersEmpty'),
+            rows: p2pOffers,
+            type: 'p2p',
+            actionLabel: t('addonsCatalogOpenP2p'),
+            fallbackPath: '/p2p',
+          })}
+          {this.renderLiquidityListingTable({
+            title: t('addonsCatalogAtomicOrders'),
+            empty: t('addonsCatalogAtomicOrdersEmpty'),
+            rows: atomicOrders,
+            type: 'atomic',
+            actionLabel: t('addonsCatalogOpenOrders'),
+            fallbackPath: '/orders',
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  renderLiquidityListingTable({title, empty, rows, type, actionLabel, fallbackPath}) {
+    const {t} = this.context;
+
+    return (
+      <div className="addons-page__channel-card addons-page__listing-card">
+        <div className="addons-page__liquidity-header">
+          <h3>{title}</h3>
+          <button onClick={() => this.openLiquidityChannelPath(fallbackPath)}>
+            {actionLabel}
+          </button>
+        </div>
+        {rows.length ? (
+          <div className="addons-page__listing-table-wrap">
+            <table className="addons-page__listing-table">
+              <thead>
+                <tr>
+                  <th>{t('addonsCatalogListingUser')}</th>
+                  <th>{t('addonsCatalogListingSide')}</th>
+                  <th>{t('amount')}</th>
+                  <th>{t('price')}</th>
+                  <th>{t('addonsCatalogListingStake')}</th>
+                  {type === 'p2p' && <th>{t('addonsCatalogListingMethod')}</th>}
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(row => (
+                  <tr key={`${type}-${row.id}`}>
+                    <td>{row.creator?.username || row.user?.username || t('addonsCatalogUnknownUser')}</td>
+                    <td className={`addons-page__side addons-page__side--${row.side}`}>
+                      {row.side}
+                    </td>
+                    <td>{row.amount_hns} HNS</td>
+                    <td>{row.price_btc_per_hns} BTC</td>
+                    <td>{row.gems_stake || 0}</td>
+                    {type === 'p2p' && <td>{row.payment_method || '-'}</td>}
+                    <td>
+                      <button onClick={() => shell.openExternal(row.url || getLiquiditySpotChannelUrl(this.state.liquiditySpotHost, fallbackPath))}>
+                        {t('addonsCatalogOpenAction')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>{empty}</p>
+        )}
+      </div>
+    );
+  }
+
+  render() {
+    const {t} = this.context;
+    const {deeplinkParams, location} = this.props;
+    const {
+      pendingExternalAddon,
+      liquiditySpotHost,
+      liquiditySpotDraftHost,
+      liquiditySpotChannels,
+      liquiditySpotChannelError,
+      liquiditySwapIntent,
+      liquiditySwapIntentLoading,
+      liquiditySwapIntentError,
+      liquiditySwapActionNotice,
+      liquiditySwapLocalKeys,
+      liquiditySwapActionLoading,
+    } = this.state;
+    const liquiditySwapIntentUrl = deeplinkParams?.liquiditySwapIntentUrl;
+    const isLiquiditySwapPage = location.pathname === '/liquidity-swap';
+    const addons = ADDONS.map(addon => {
+      if (addon.id !== 'liquidity-spot') {
+        return addon;
+      }
+
+      return {
+        ...addon,
+        href: getLiquiditySpotChannelUrl(liquiditySpotHost),
+        descriptionValues: [liquiditySpotHost],
+      };
+    });
+
+    return (
+      <div className={`addons-page${isLiquiditySwapPage ? '' : ' addons-page--catalog'}`}>
+        {!isLiquiditySwapPage && (
+          <>
+            <div className="addons-page__intro">
+              <div>
+                <h2>{t('moreAddonsTitle')}</h2>
+                <p>{t('moreAddonsIntro')}</p>
+              </div>
+              <button
+                className="addons-page__docs-button"
+                onClick={() => shell.openExternal(`${BRAND.siteUrl}`)}
+              >
+                {t('openDocs')}
+              </button>
+            </div>
+            <DocsHelp
+              title={t('headingAddOns')}
+              buttonLabel={t('learnMore')}
+              href={`${BRAND.siteUrl}/docs/add-ons`}
+            >
+              {reviewText(t, 'addonsDocsHelp')}
+            </DocsHelp>
+          </>
+        )}
+        <div className="addons-page__channel-card">
+          <div>
+            <h3>{reviewText(t, 'addonLiquidityChannelTitle')}</h3>
+            <p>
+              {t('activeChannel')}: <strong>{liquiditySpotHost}</strong>. {reviewText(t, 'addonLiquidityChannelHelp')}
+            </p>
+          </div>
+          <div className="addons-page__channel-controls">
+            <select
+              value={liquiditySpotHost}
+              onChange={event => {
+                const host = event.target.value;
+                window.localStorage.setItem(LIQUIDITY_SPOT_CHANNEL_STORAGE_KEY, host);
+                this.setState({
+                  liquiditySpotHost: host,
+                  liquiditySpotDraftHost: host,
+                  liquiditySpotChannelError: '',
+                }, () => this.loadLiquidityChannel(host));
+              }}
+            >
+              {liquiditySpotChannels.map(channel => (
+                <option key={channel.host} value={channel.host}>
+                  {channel.label}
+                </option>
+              ))}
+            </select>
+            <input
+              value={liquiditySpotDraftHost}
+              onChange={event => this.setState({
+                liquiditySpotDraftHost: event.target.value,
+                liquiditySpotChannelError: '',
+              })}
+              placeholder="liquidity.spot"
+            />
+            <button onClick={() => this.saveLiquiditySpotChannel()}>
+              {reviewText(t, 'addonLiquidityChannelSave')}
+            </button>
+            <button onClick={() => this.resetLiquiditySpotChannel()}>
+              {t('reset')}
+            </button>
+          </div>
+          {liquiditySpotChannelError && (
+            <div className="addons-page__channel-error">
+              {reviewText(t, liquiditySpotChannelError)}
+            </div>
+          )}
+        </div>
+        {isLiquiditySwapPage && this.renderLiquidityChannelListings()}
+        {liquiditySwapIntentUrl && (
+          <div className="addons-page__channel-card addons-page__swap-intent">
+            <div>
+              <h3>{t('addonsCatalogIntentReadyTitle')}</h3>
+              <p>
+                {t('addonsCatalogIntentReadyBody')}
+              </p>
+              <code>{liquiditySwapIntentUrl}</code>
+            </div>
+            {liquiditySwapIntentLoading && (
+              <div className="addons-page__swap-intent-message">
+                {t('addonsCatalogLoadingSwapTerms')}
+              </div>
+            )}
+            {liquiditySwapIntentError && (
+              <div className="addons-page__channel-error">
+                {reviewText(t, liquiditySwapIntentError)}
+              </div>
+            )}
+            {this.renderLiquiditySwapIntentDetails(liquiditySwapIntent)}
+            {liquiditySwapActionNotice && (
+              <div className="addons-page__swap-intent-message">
+                {reviewText(t, liquiditySwapActionNotice)}
+              </div>
+            )}
+            <div className="addons-page__swap-intent-actions">
+              <button
+                disabled={liquiditySwapActionLoading || !liquiditySwapIntent?.hns_lock}
+                onClick={() => this.generateLiquidityHnsKey('claim')}
+              >
+                {t('addonsCatalogGenerateBobClaimKey')}
+              </button>
+              <button
+                disabled={liquiditySwapActionLoading || !liquiditySwapIntent?.hns_lock}
+                onClick={() => this.generateLiquidityHnsKey('refund')}
+              >
+                {t('addonsCatalogGenerateAliceRefundKey')}
+              </button>
+              <button
+                disabled={
+                  liquiditySwapActionLoading
+                  || !liquiditySwapIntent?.hns_lock?.claim_public_key
+                  || !liquiditySwapLocalKeys.refund?.publicKey
+                }
+                onClick={() => this.lockLiquidityHns()}
+              >
+                {t('addonsCatalogLockHns')}
+              </button>
+              <button
+                disabled={
+                  liquiditySwapActionLoading
+                  || !liquiditySwapIntent?.claims?.bob_hns_claim?.revealed_secret
+                  || !liquiditySwapLocalKeys.claim?.address
+                }
+                onClick={() => this.claimLiquidityHns()}
+              >
+                {t('addonsCatalogClaimHns')}
+              </button>
+              <button onClick={() => this.openLiquiditySwapIntent()}>
+                {t('addonsCatalogOpenIntentJson')}
+              </button>
+              <button onClick={() => this.openLiquiditySwapRoom()}>
+                {t('addonsCatalogOpenSwapRoom')}
+              </button>
+            </div>
+          </div>
+        )}
+        {isLiquiditySwapPage && !liquiditySwapIntentUrl && (
+          <div className="addons-page__channel-card addons-page__swap-intent">
+            <div>
+              <h3>{t('addonsCatalogNoIntentTitle')}</h3>
+              <p>
+                {t('addonsCatalogNoIntentBody')}
+              </p>
+            </div>
+          </div>
+        )}
+        {!isLiquiditySwapPage && (
+          <div className="addons-page__grid">
+          {addons.map(addon => (
+            <div className="addons-page__card" key={addon.id || addon.name}>
+              <div className="addons-page__card-header">
+                <h3>{addon.nameKey ? reviewText(t, addon.nameKey) : addon.name}</h3>
+                <span>{addon.statusKey ? reviewText(this.context.t, addon.statusKey) : addon.status}</span>
+              </div>
+              <p>{addon.descriptionKey ? reviewText(t, addon.descriptionKey, ...(addon.descriptionValues || [])) : addon.description}</p>
+              {addon.detailKeys && (
+                <ul className="addons-page__details">
+                  {addon.detailKeys.map(detail => (
+                    <li key={detail}>{reviewText(t, detail)}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="addons-page__actions">
+                {addon.href && (
+                  <button onClick={() => this.openAddon(addon)}>
+                    {addon.actionKey ? reviewText(this.context.t, addon.actionKey) : addon.action}
+                  </button>
+                )}
+                {addon.docsHref && (
+                  <button onClick={() => shell.openExternal(addon.docsHref)}>
+                    {t('openDocs')}
+                  </button>
+                )}
+              </div>
+              {pendingExternalAddon?.id === addon.id && (
+                <div className="addons-page__external-notice">
+                  <h4>{reviewText(t, 'addonExternalTitle')}</h4>
+                  <p>{reviewText(t, addon.externalNoticeKey || 'addonExternalNotice')}</p>
+                  <div className="addons-page__notice-actions">
+                    <button onClick={() => this.confirmExternalAddon()}>
+                      {t('continue')}
+                    </button>
+                    <button onClick={() => this.cancelExternalAddon()}>
+                      {t('cancel')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+}
+
+export default withRouter(connect(
+  state => ({
+    deeplinkParams: state.app.deeplinkParams,
+  }),
+)(Addons));

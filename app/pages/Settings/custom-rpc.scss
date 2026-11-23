@@ -1,0 +1,25 @@
+@import '../../variables';
+@import '../../tokens';
+@import '../../styles/controls';
+
+.custom-rpc {
+  &__network-picker {
+    width: 100%;
+
+    .dropdown {
+      &__options {
+        padding: 0;
+      }
+
+      &__current-item::after {
+        top: 0.5rem;
+      }
+
+      &--opened {
+        .dropdown__current-item::after {
+          top: 0.75rem;
+        }
+      }
+    }
+  }
+}

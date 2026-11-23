@@ -1,0 +1,42 @@
+@import '../../../variables';
+@import '../wizard';
+
+// The seed phrase itself: words read as chips on a sunken surface.
+.confirm-seed {
+  &__warning {
+    margin: 0.25rem 0 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--fns-warning);
+  }
+
+  &__editable {
+    display: flex;
+    flex-flow: row wrap;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid var(--fns-border);
+    border-radius: var(--fns-radius-md);
+    background: var(--fns-surface-sunken);
+    color: var(--fns-text);
+    font-family: var(--fns-font-mono);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    cursor: text;
+    resize: none;
+    outline: none;
+  }
+
+  &__seed-word {
+    height: auto;
+    margin: 0.1875rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--fns-radius-sm);
+    background: rgb(var(--fns-brand-rgb) / 0.12);
+    color: var(--fns-text);
+    font-family: var(--fns-font-mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+}

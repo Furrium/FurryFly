@@ -1,0 +1,32 @@
+@import '../../../variables';
+@import '../wizard';
+
+.opt-in-analytics {
+  @include wizard-shell;
+
+  &__checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--fns-border);
+    border-radius: var(--fns-radius-md);
+    background: var(--fns-surface);
+  }
+
+  &__checkbox {
+    flex: 0 0 auto;
+  }
+
+  &__checkbox-description {
+    margin: 0;
+  }
+
+  &__footer {
+    button,
+    .extension_cta_button,
+    .create_cta {
+      @include wizard-cta;
+    }
+  }
+}

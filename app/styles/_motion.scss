@@ -1,0 +1,130 @@
+// Motion.
+//
+// The app had almost none: 4 keyframes total, and the transitions that existed were
+// mostly hover colour fades on buttons. Nothing communicated a change of state - a
+// route swap, a list arriving, a modal opening - so the interface felt static even
+// when it was busy.
+//
+// Everything here is opt-out: each animation collapses to a plain appearance when the
+// user asks for reduced motion, which is both an accessibility requirement and the
+// reason these are safe to apply broadly.
+
+// ---------------------------------------------------------------- durations
+// One scale, so related things move together: chips and rows snap, panels settle,
+// page-level transitions take their time.
+:root {
+  --fns-motion-instant: 90ms;
+  --fns-motion-fast: 140ms;
+  --fns-motion-base: 220ms;
+  --fns-motion-slow: 320ms;
+  --fns-motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --fns-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ------------------------------------------------------------------ keyframes
+@keyframes fns-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+// Content that arrives where the user is already looking: small travel, no bounce.
+@keyframes fns-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fns-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Both ends carry a frame so the 100% state can be watched by accessibility tooling
+// and so a paused animation still shows something.
+@keyframes fns-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+// Indeterminate progress: a band travelling across a track.
+@keyframes fns-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(400%);
+  }
+}
+
+// ---------------------------------------------------------------- utilities
+// Applied to a container once, when its route mounts.
+.fns-animate-enter {
+  animation: fns-rise-in var(--fns-motion-slow) var(--fns-motion-ease-out) both;
+}
+
+.fns-animate-fade {
+  animation: fns-fade-in var(--fns-motion-base) var(--fns-motion-ease-out) both;
+}
+
+// Grid rows and cards stagger in. The index is set per item via --fns-index so a list
+// reads as one movement rather than N independent ones. The container sets
+// --fns-stagger so a long list can shrink the step: thirteen cards at 35ms each would
+// leave the last one waiting nearly half a second.
+.fns-animate-stagger {
+  animation: fns-rise-in var(--fns-motion-base) var(--fns-motion-ease-out) both;
+  animation-delay: calc(var(--fns-index, 0) * var(--fns-stagger, 35ms));
+}
+
+// Containers that hold a staggered list set the step here.
+.fns-stagger-host {
+  --fns-stagger: 35ms;
+}
+
+.fns-animate-pop {
+  animation: fns-scale-in var(--fns-motion-fast) var(--fns-motion-ease-out) both;
+}
+
+.fns-animate-pulse {
+  animation: fns-pulse 1.6s var(--fns-motion-ease-in-out) infinite;
+}
+
+// ------------------------------------------------------- respect the setting
+// `prefers-reduced-motion` users get the end state immediately. Collapsing to a
+// near-zero duration rather than `animation: none` keeps `both` fill behaviour, so
+// nothing that relies on the final frame ends up invisible.
+@media (prefers-reduced-motion: reduce) {
+  .fns-animate-enter,
+  .fns-animate-fade,
+  .fns-animate-stagger,
+  .fns-animate-pop,
+  .fns-animate-pulse {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,0 +1,278 @@
+@import '../../variables';
+
+.bids {
+  @extend %col-nowrap;
+
+  &__top {
+    @extend %row-nowrap;
+    align-items: center;
+
+    &__actions {
+      @extend %row-nowrap;
+      flex: 1 1 auto;
+      justify-content: flex-end;
+    }
+
+    &__btn {
+      @extend %btn-primary;
+      height: 1.75rem;
+      padding: 0 1rem;
+      margin-left: 1rem;
+    }
+  }
+
+  &__filters {
+    @extend %row-nowrap;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+
+  &__filter {
+    margin-right: 1rem;
+    cursor: pointer;
+    color: $azure-blue;
+    text-transform: uppercase;
+
+    &--active {
+      cursor: default;
+      color: $black;
+      font-weight: 600;
+    }
+
+    &--urgent:not(&--active) {
+      color: #e35d5d;
+    }
+  }
+
+  &__hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.78rem;
+    color: $manatee-gray;
+    line-height: 1.35;
+  }
+
+  &__search {
+    margin: 1rem 0;
+    width: 10rem;
+  }
+
+  &__top__btn--secondary {
+    background: transparent;
+    color: $azure-blue;
+    border: 1px solid $azure-blue;
+
+    &:hover {
+      background: rgba($azure-blue, 0.08);
+    }
+  }
+}
+
+body.bob-theme-dark {
+  .bids {
+    &__filter--active {
+      color: #e6edf3;
+    }
+
+    &__filter--urgent:not(.bids__filter--active) {
+      color: #ff9a90;
+    }
+
+    &__hint {
+      color: rgba($white, 0.55);
+    }
+  }
+}
+
+.bids-table {
+  &__checkbox {
+    width: 0.95rem;
+    height: 0.95rem;
+    cursor: pointer;
+  }
+
+  &__empty-row {
+    @extend %row-nowrap;
+    height: 1.8rem;
+    font-size: .8rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &--selectable {
+    .table {
+      &__header,
+      &__row {
+        &__item:nth-of-type(1) {
+          flex: 0 0 2.25rem;
+        }
+
+        &__item:nth-of-type(2) {
+          flex: 0 0 11rem;
+        }
+
+        &__item:nth-of-type(3) {
+          flex: 1 0 8rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        &__item:nth-of-type(4) {
+          flex: 0 0 5rem;
+        }
+
+        &__item:nth-of-type(5) {
+          flex: 0 0 6rem;
+        }
+
+        &__item:nth-of-type(6) {
+          flex: 0 0 7rem;
+        }
+      }
+    }
+  }
+
+  .table {
+    &__header {
+      &__item:nth-of-type(1) {
+        flex: 0 0 11rem;
+      }
+
+      &__item:nth-of-type(2) {
+        flex: 1 0 8rem;
+      }
+
+      &__item:nth-of-type(3) {
+        flex: 0 0 5rem;
+      }
+
+      &__item:nth-of-type(4) {
+        flex: 0 0 6rem;
+      }
+
+      &__item:nth-of-type(5) {
+        flex: 0 0 7rem;
+      }
+    }
+
+    &__row {
+      cursor: pointer;
+      transition: background-color 250ms ease-in-out;
+
+      &:hover {
+        background-color: rgba($black, .025);
+      }
+
+      &:active {
+        background-color: rgba($black, .05);
+      }
+
+      &__item:nth-of-type(1) {
+        flex: 0 0 11rem;
+      }
+
+      &__item:nth-of-type(2) {
+        flex: 1 0 8rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &__item:nth-of-type(3) {
+        flex: 0 0 5rem;
+      }
+
+      &__item:nth-of-type(4) {
+        flex: 0 0 6rem;
+      }
+
+      &__item:nth-of-type(5) {
+        flex: 0 0 7rem;
+      }
+    }
+  }
+}
+
+.bid-status {
+  @extend %row-nowrap;
+  align-items: center;
+
+  &__dot {
+    flex: 0 0 auto;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 100%;
+    margin-right: 1rem;
+    background-color: $dark-grey;
+
+    &--sold {
+      background-color: $dark-grey;
+    }
+
+    &--owned {
+      background-color: $success-green;
+    }
+
+    &--bidding {
+      background-color: $electric-violet;
+    }
+
+    &--opening {
+      background-color: mix($school-bus-yellow, $electric-violet, 40%);
+    }
+
+    &--available {
+      background-color: $school-bus-yellow;
+    }
+
+    &--reveal {
+      background-color: mix($electric-violet, $success-green, 50%);
+    }
+  }
+
+  &__text {
+    font-size: .6rem;
+    font-weight: 500;
+    color: $dark-grey;
+    text-transform: uppercase;
+
+    &__paren {
+      padding-left: .25rem;
+    }
+
+    &__link {
+      @extend %link;
+    }
+  }
+}
+
+.bid-action {
+  @extend %row-nowrap;
+  justify-content: flex-end;
+  overflow-x: auto;
+
+  &__delete-icon {
+    width: 1rem;
+    height: 1rem;
+    background-image: url(../../assets/images/delete-gray.svg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: .5;
+    cursor: pointer;
+    transition: opacity 250ms ease-in-out;
+
+    &:hover {
+      opacity: .4;
+    }
+
+    &:active {
+      opacity: .6;
+    }
+  }
+
+  &__link {
+    @extend %link;
+
+    margin-left: .5rem;
+  }
+}

@@ -1,0 +1,19 @@
+@import '../../../variables';
+@import '../wizard';
+
+.create-password {
+  @include wizard-shell;
+
+  &__input {
+    @include wizard-field;
+    margin-bottom: 0.25rem;
+  }
+
+  &__footer {
+    button,
+    .extension_cta_button,
+    .create_cta {
+      @include wizard-cta;
+    }
+  }
+}

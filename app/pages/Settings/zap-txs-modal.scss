@@ -1,0 +1,39 @@
+@import '../../variables';
+@import '../../tokens';
+@import '../../styles/controls';
+
+.zap-txs-modal {
+  &__checkbox {
+    display: flex;
+    padding-top: 0.625rem;
+    margin-bottom: 1rem;
+    overflow: auto;
+  }
+
+  &__checkbox-box {
+    flex: 0 0 auto;
+  }
+
+  &__checkbox-label {
+    width: 100%;
+    padding-left: 0.625rem;
+    color: var(--fns-text-secondary);
+    font-size: 0.875rem;
+    font-weight: var(--fns-weight-medium);
+    line-height: 1.3;
+    text-align: left;
+  }
+
+  &__tx-list {
+    max-height: 15rem;
+    overflow-y: auto;
+  }
+
+  &__action {
+    @include fns-button-primary;
+  }
+}
+
+.wide {
+  width: 100%;
+}

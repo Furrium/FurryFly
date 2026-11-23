@@ -1,0 +1,48 @@
+import { combineReducers } from 'redux';
+import { connectRouter } from '@rithvikvibhu/connected-react-router';
+import names from './namesReducer';
+import wallet from './walletReducer';
+import node, { START_NETWORK_CHANGE } from './nodeReducer';
+import hip2 from './hip2Reducer';
+import myDomains from './myDomains';
+import notifications from './notifications';
+import bids from './bids';
+import watching from './watching';
+import ledger from './ledger';
+import app from './app';
+import exchange from './exchange.js';
+import claims from './claims.js';
+import auctionBasket from './auctionBasket.js';
+import openBasket from './openBasket.js';
+import storage from './storageReducer';
+import walletStats from './walletStats';
+
+export default function createRootReducer(history) {
+  const root = combineReducers({
+    router: connectRouter(history),
+    names,
+    wallet,
+    node,
+    hip2,
+    myDomains,
+    notifications,
+    bids,
+    watching,
+    ledger,
+    app,
+    exchange,
+    claims,
+    auctionBasket,
+    openBasket,
+    storage,
+    walletStats,
+  });
+
+  return (state, action) => {
+    if (action.type === START_NETWORK_CHANGE) {
+      state = undefined;
+    }
+
+    return root(state, action);
+  }
+};

@@ -1,0 +1,76 @@
+@import "../../variables.scss";
+
+.addr-input {
+  @extend %col-nowrap;
+
+  height: 100%;
+  justify-content: center;
+  overflow-wrap: break-word;
+
+  &__input {
+    @extend %box-input;
+    @extend %row-nowrap;
+
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 0.75rem;
+
+    input {
+      outline: none;
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 0;
+      font-size: 0.85rem;
+      border: none;
+    }
+  }
+
+  &__resolve {
+    flex: 0 0 auto;
+    margin-left: 0.5rem;
+    padding: 0.25rem 0.55rem;
+    border: 0;
+    border-radius: 0.4rem;
+    background-color: rgba($azure-blue, 0.15);
+    color: $azure-blue;
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      background-color: rgba($azure-blue, 0.23);
+      outline: none;
+    }
+  }
+
+  &__hint {
+    margin: 0.45rem 0.75rem 0;
+    color: rgba($black, 0.55);
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+
+  &__prefix {
+    display: inline-block;
+    width: 1rem;
+    img {
+      width: 1.2rem;
+      vertical-align: sub;
+      margin-left: -0.3rem;
+      filter: grayscale(1);
+    }
+  }
+
+  .alert {
+    border: none !important;
+    margin: 0.45rem 0 0 !important;
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
+    line-height: 1.3;
+  }
+
+  &__result {
+    overflow-wrap: anywhere;
+  }
+}

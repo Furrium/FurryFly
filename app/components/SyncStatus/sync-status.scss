@@ -1,0 +1,133 @@
+@import "../../variables";
+
+// A ring that inherits currentColor: the label already switches colour per state,
+// so one rule covers the light, dark and neon themes with no asset.
+@keyframes sync-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sync-status-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 2rem;
+
+  // The action pill. Small, outlined, and only present while it can do something,
+  // so the header does not carry a dead control on a finished chain.
+  &__toggle {
+    appearance: none;
+    flex: 0 0 auto;
+    height: 1.5rem;
+    padding: 0 0.625rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: none;
+    color: $manatee-gray;
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: opacity 150ms ease-in-out;
+
+    &:hover:not(:disabled) {
+      opacity: 0.7;
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+}
+
+.sync-status {
+  @extend %h5;
+  @extend %row-nowrap;
+  align-items: center;
+  font-weight: 500;
+  line-height: 1rem;
+  color: $manatee-gray;
+  transition: color 250ms ease-in-out;
+
+  &:hover {
+    cursor: default;
+  }
+
+  &:before {
+    content: "";
+    display: block;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    height: 0.8rem;
+    width: 0.8rem;
+    margin-right: 6px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-left-color: transparent;
+    border-bottom-color: transparent;
+    opacity: 0.6;
+  }
+
+  &--success {
+    color: $caribbean-green;
+    font-weight: 600;
+
+    &:before {
+      border: 0;
+      border-radius: 0;
+      opacity: 1;
+      background-size: cover;
+      background-position: center;
+      background-image: url("../../assets/images/check-square.svg");
+    }
+  }
+
+  &--failure {
+    color: $orange-red;
+    font-weight: 600;
+
+    &:before {
+      border: 0;
+      border-radius: 0;
+      opacity: 1;
+      background-size: cover;
+      background-position: center;
+      background-image: url("../../assets/images/x-square.svg");
+    }
+  }
+
+  &--loading {
+    color: $manatee-gray;
+    font-weight: 600;
+
+    &:before {
+      opacity: 1;
+      animation: sync-status-spin 900ms linear infinite;
+    }
+  }
+
+  // Chain parked because sync is switched off - the ring is drawn but still.
+  &--paused {
+    color: $manatee-gray;
+
+    &:before {
+      opacity: 0.45;
+      animation: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &--loading:before {
+      animation: none;
+    }
+  }
+}

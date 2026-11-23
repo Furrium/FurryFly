@@ -1,0 +1,43 @@
+@import '../../variables';
+@import '../../tokens';
+@import '../../styles/controls';
+
+.max-idle-modal {
+  &__instructions {
+    margin-bottom: 1.5rem;
+    color: var(--fns-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  &__input {
+    margin-bottom: 1.5rem;
+    color: var(--fns-text);
+    font-size: 1rem;
+    font-weight: var(--fns-weight-medium);
+
+    input {
+      width: 4.5rem;
+      margin-left: 0.375rem;
+      padding: 0.5rem;
+      border: 1px solid var(--fns-border);
+      border-radius: var(--fns-radius-sm);
+      background: var(--fns-surface-raised);
+      color: var(--fns-text);
+      font: inherit;
+      font-size: 1rem;
+      text-align: center;
+      outline: 0;
+
+      &:focus {
+        border-color: var(--fns-brand);
+      }
+    }
+  }
+
+  &__submit {
+    @include fns-button-primary;
+
+    width: 100%;
+  }
+}

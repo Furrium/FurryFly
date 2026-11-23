@@ -1,0 +1,119 @@
+import { del, get, put } from '../db/service';
+import crypto from "crypto";
+import {ConnectionTypes} from './types';
+export {ConnectionTypes} from './types';
+
+const CONNECTION_TYPE_KEY = 'connection_type';
+const RPC_API_KEY = 'p2p_api_key';
+const CUSTOM_RPC_HOST = 'custom_rpc_host';
+const CUSTOM_RPC_PORT = 'custom_rpc_port';
+const CUSTOM_RPC_PATH = 'custom_rpc_path';
+const CUSTOM_RPC_NETWORK_TYPE = 'custom_rpc_network_type';
+const CUSTOM_RPC_API_KEY = 'custom_rpc_api_key';
+const CUSTOM_RPC_URL = 'custom_rpc_url';
+const CUSTOM_RPC_PROTOCOL = 'custom_rpc_protocol';
+
+const Network = require('hsd/lib/protocol/network');
+
+export async function getAPIKey() {
+  const apiKey = await get(RPC_API_KEY);
+
+  if (!apiKey) {
+    const key = crypto.randomBytes(20).toString('hex');
+    await put(RPC_API_KEY, key);
+    return key;
+  }
+
+  return apiKey;
+}
+
+export async function getCustomRPC() {
+  const host = await get(CUSTOM_RPC_HOST);
+  const port = await get(CUSTOM_RPC_PORT);
+  const networkType = await get(CUSTOM_RPC_NETWORK_TYPE);
+  const apiKey = await get(CUSTOM_RPC_API_KEY);
+  const url = await get(CUSTOM_RPC_URL);
+  const pathname = await get(CUSTOM_RPC_PATH);
+  const protocol = await get(CUSTOM_RPC_PROTOCOL);
+
+  return {
+    host,
+    port,
+    networkType,
+    apiKey,
+    url,
+    pathname,
+    protocol,
+  };
+}
+
+async function setConnection(opts) {
+  if (process.env.BOB_PACKAGED_ACCEPTANCE_TEST === 'true' && opts.type !== ConnectionTypes.P2P) {
+    throw new Error('Packaged acceptance policy requires a local P2P connection.');
+  }
+  switch (opts.type) {
+    case ConnectionTypes.P2P:
+      await put(CONNECTION_TYPE_KEY, ConnectionTypes.P2P);
+      return;
+    case ConnectionTypes.Custom:
+      await put(CONNECTION_TYPE_KEY, ConnectionTypes.Custom);
+    case ConnectionTypes.TEST:
+      await put(CUSTOM_RPC_HOST, opts.host || '');
+      await put(CUSTOM_RPC_PORT, opts.port || '');
+      await put(CUSTOM_RPC_NETWORK_TYPE, opts.networkType || '');
+      await put(CUSTOM_RPC_API_KEY, opts.apiKey || '');
+      await put(CUSTOM_RPC_URL, opts.url || '');
+      await put(CUSTOM_RPC_PATH, opts.pathname || '');
+      await put(CUSTOM_RPC_PROTOCOL, opts.protocol || '');
+      return;
+    default:
+      throw new Error(`unknown connection type ${opts.type}`);
+  }
+}
+
+async function setConnectionType(connectionType) {
+  if (process.env.BOB_PACKAGED_ACCEPTANCE_TEST === 'true' && connectionType !== ConnectionTypes.P2P) {
+    throw new Error('Packaged acceptance policy requires a local P2P connection.');
+  }
+  return await put(CONNECTION_TYPE_KEY, connectionType);
+}
+
+export async function getConnection() {
+  if (process.env.BOB_PACKAGED_ACCEPTANCE_TEST === 'true') {
+    return {type: ConnectionTypes.P2P, apiKey: await getAPIKey()};
+  }
+  const connectionType = await get(CONNECTION_TYPE_KEY);
+
+  switch (connectionType) {
+    case ConnectionTypes.Custom:
+      const customRpc = await getCustomRPC();
+      return {
+        type: ConnectionTypes.Custom,
+        ...customRpc,
+      };
+    case ConnectionTypes.P2P:
+      return {
+        type: ConnectionTypes.P2P,
+        apiKey: await getAPIKey(),
+      };
+    default:
+      return {
+        type: ConnectionTypes.P2P,
+        apiKey: await getAPIKey(),
+      };
+  }
+}
+
+const sName = 'Connections';
+const methods = {
+  getConnection,
+  setConnection,
+  setConnectionType,
+  getCustomRPC: process.env.BOB_PACKAGED_ACCEPTANCE_TEST === 'true'
+    ? async () => { throw new Error('Packaged acceptance policy blocks Custom RPC.'); }
+    : getCustomRPC,
+};
+
+export async function start(server) {
+  server.withService(sName, methods);
+}

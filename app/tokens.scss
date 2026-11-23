@@ -1,0 +1,196 @@
+// FurryFly design tokens.
+//
+// These are CSS custom properties rather than SCSS variables so a theme switch
+// costs one attribute change instead of a rebuild. `variables.scss` is left
+// untouched on purpose: 434 call sites across 60 files compute colours with
+// rgba()/lighten()/darken() against its compile-time SCSS variables, and those
+// cannot take a var(). Migration is incremental - a page adopts these tokens
+// when it is rewritten.
+//
+// Naming: --fns-<role>. Roles are semantic (surface, text, accent), never
+// literal (grey, blue), so a variant can redefine them freely.
+//
+// Each colour also has an -rgb triple holding raw channels, so translucent
+// layers can be written as rgb(var(--fns-accent-rgb) / 0.35) instead of
+// hardcoding a second hex value.
+
+// ---------------------------------------------------------------- invariant
+// Scale tokens do not change between themes.
+:root {
+  // 4px base step. Density-critical layouts use --fns-space-1/2.
+  --fns-space-0: 0;
+  --fns-space-1: 0.25rem;
+  --fns-space-2: 0.5rem;
+  --fns-space-3: 0.75rem;
+  --fns-space-4: 1rem;
+  --fns-space-5: 1.5rem;
+  --fns-space-6: 2rem;
+  --fns-space-7: 3rem;
+
+  --fns-radius-sm: 0.25rem;
+  --fns-radius-md: 0.5rem;
+  --fns-radius-lg: 0.75rem;
+  --fns-radius-pill: 999px;
+
+  --fns-text-xs: 0.6875rem;
+  --fns-text-sm: 0.8125rem;
+  --fns-text-md: 0.875rem;
+  --fns-text-lg: 1rem;
+  --fns-text-xl: 1.25rem;
+  --fns-text-2xl: 1.625rem;
+
+  --fns-font-sans: system-ui, 'Inter', 'Roboto', sans-serif;
+  --fns-font-mono: 'Roboto Mono', ui-monospace, monospace;
+
+  --fns-weight-regular: 400;
+  --fns-weight-medium: 500;
+  --fns-weight-bold: 700;
+
+  --fns-duration-fast: 120ms;
+  --fns-duration-base: 180ms;
+  --fns-ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  // Row heights for dense tables and lists.
+  --fns-row-height: 2.25rem;
+  --fns-control-height: 2rem;
+
+  --fns-z-sticky: 10;
+  --fns-z-overlay: 100;
+  --fns-z-modal: 1000;
+}
+
+// -------------------------------------------------------------------- light
+// The default. Values stay close to the existing light palette so nothing
+// shifts before a page is migrated.
+:root,
+body[data-theme='light'] {
+  color-scheme: light;
+
+  --fns-canvas: #f1f1f3;
+  --fns-canvas-rgb: 241 241 243;
+  --fns-surface: #ffffff;
+  --fns-surface-rgb: 255 255 255;
+  --fns-surface-raised: #ffffff;
+  --fns-surface-sunken: #e9e9ee;
+  --fns-overlay: rgb(13 17 23 / 0.45);
+
+  --fns-border: #e2e2e2;
+  --fns-border-rgb: 226 226 226;
+  --fns-border-strong: #c2c2c2;
+
+  --fns-text: #16161a;
+  --fns-text-rgb: 22 22 26;
+  --fns-text-secondary: #4a4a52;
+  --fns-text-muted: #909095;
+  --fns-text-inverse: #ffffff;
+
+  --fns-accent: #2480fd;
+  --fns-accent-rgb: 36 128 253;
+  --fns-accent-strong: #0a6ae0;
+  --fns-accent-contrast: #ffffff;
+  --fns-accent-subtle: rgb(36 128 253 / 0.10);
+
+  // Brand accent: used for brand moments and sparing emphasis, not for every
+  // interactive element. Darker in light mode so it holds contrast on white.
+  --fns-brand: #00a97e;
+  --fns-brand-rgb: 0 169 126;
+
+  --fns-success: #0bca6b;
+  --fns-success-rgb: 11 202 107;
+  --fns-danger: #ff2f1f;
+  --fns-danger-rgb: 255 47 31;
+  --fns-warning: #d9a400;
+  --fns-warning-rgb: 217 164 0;
+
+  --fns-focus-ring: rgb(36 128 253 / 0.35);
+
+  --fns-shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+  --fns-shadow-md: 0 4px 12px rgb(16 24 40 / 0.10);
+  --fns-shadow-lg: 0 16px 40px rgb(16 24 40 / 0.16);
+}
+
+// --------------------------------------------------------------- the theme
+// One theme, applied to :root so it holds even before the body attribute lands, and
+// repeated on body[data-theme] so a stale attribute cannot leave the page unstyled.
+//
+// The palette started as two variants: a quiet back-office dark and a neon one. They
+// are merged here - the deep canvas and the glow come from neon, the surface ramp and
+// type scale from the back-office set - because a single product does not need two
+// different energies.
+:root,
+body[data-theme='dark'],
+body[data-theme='neon'] {
+  color-scheme: dark;
+
+  --fns-canvas: #080b11;
+  --fns-canvas-rgb: 8 11 17;
+  --fns-surface: #11161f;
+  --fns-surface-rgb: 17 22 31;
+  --fns-surface-raised: #1a2130;
+  --fns-surface-sunken: #05080d;
+  --fns-overlay: rgb(0 2 6 / 0.78);
+
+  --fns-border: #24303e;
+  --fns-border-rgb: 36 48 62;
+  --fns-border-strong: #35475b;
+
+  --fns-text: #e6edf3;
+  --fns-text-rgb: 230 237 243;
+  --fns-text-secondary: #9aa4af;
+  --fns-text-muted: #7d8590;
+  --fns-text-inverse: #0d1117;
+
+  --fns-accent: #58a6ff;
+  --fns-accent-rgb: 88 166 255;
+  --fns-accent-strong: #79c0ff;
+  --fns-accent-contrast: #04121f;
+  --fns-accent-subtle: rgb(88 166 255 / 0.14);
+
+  --fns-brand: #5cffd0;
+  --fns-brand-rgb: 92 255 208;
+
+  --fns-success: #3fb950;
+  --fns-success-rgb: 63 185 80;
+  --fns-danger: #f85149;
+  --fns-danger-rgb: 248 81 73;
+  --fns-warning: #f2cc60;
+  --fns-warning-rgb: 242 204 96;
+
+  // Brand-tinted, like every other focus affordance: a blue ring around a mint button
+  // read as a foreign highlight rather than the button being focused.
+  --fns-focus-ring: rgb(92 255 208 / 0.40);
+
+  // Depth reads as light rather than shade: on a near-black canvas a drop shadow is
+  // invisible, but a faint brand-tinted rim separates a raised surface from the page.
+  --fns-shadow-sm: 0 0 0 1px rgb(var(--fns-brand-rgb) / 0.08);
+  --fns-shadow-md: 0 0 18px rgb(var(--fns-brand-rgb) / 0.10);
+  --fns-shadow-lg: 0 0 42px rgb(var(--fns-brand-rgb) / 0.14);
+
+  --fns-glow-accent: 0 0 12px rgb(var(--fns-brand-rgb) / 0.45);
+  --fns-glow-alt: 0 0 12px rgb(var(--fns-accent-rgb) / 0.40);
+}
+
+// ------------------------------------------------------------ SCSS bindings
+// For rewritten components that want the token without typing var() by hand.
+// These are deliberately NOT named like the legacy palette variables, so they
+// can never silently shadow the compile-time colours still in use.
+$fns-canvas: var(--fns-canvas);
+$fns-surface: var(--fns-surface);
+$fns-surface-raised: var(--fns-surface-raised);
+$fns-surface-sunken: var(--fns-surface-sunken);
+$fns-border: var(--fns-border);
+$fns-border-strong: var(--fns-border-strong);
+$fns-text: var(--fns-text);
+$fns-text-secondary: var(--fns-text-secondary);
+$fns-text-muted: var(--fns-text-muted);
+$fns-accent: var(--fns-accent);
+$fns-accent-strong: var(--fns-accent-strong);
+$fns-accent-contrast: var(--fns-accent-contrast);
+$fns-brand: var(--fns-brand);
+$fns-success: var(--fns-success);
+$fns-danger: var(--fns-danger);
+$fns-warning: var(--fns-warning);
+$fns-focus-ring: var(--fns-focus-ring);
+$fns-shadow-sm: var(--fns-shadow-sm);
+$fns-shadow-md: var(--fns-shadow-md);
+$fns-shadow-lg: var(--fns-shadow-lg);

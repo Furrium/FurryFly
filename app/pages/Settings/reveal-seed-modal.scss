@@ -1,0 +1,65 @@
+@import '../../variables';
+@import '../../tokens';
+@import '../../styles/controls';
+
+// Seed phrase reveal: instructions, password gate, then the phrase itself.
+.reveal-seed-modal__instructions {
+  margin-bottom: 1.5rem;
+  color: var(--fns-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.reveal-seed-modal__password {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 0.75rem;
+  padding: 0.5625rem 0.75rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-md);
+  background: var(--fns-surface-raised);
+  color: var(--fns-text);
+  font: inherit;
+  font-size: 0.875rem;
+  outline: 0;
+
+  &:focus {
+    border-color: var(--fns-brand);
+  }
+}
+
+.reveal-seed-modal__error-message {
+  width: 100%;
+  margin: 0 0 1.25rem;
+  color: var(--fns-danger);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.reveal-seed-modal__submit {
+  @include fns-button-primary;
+
+  width: 100%;
+}
+
+// The phrase is the one thing on this screen that must be readable at a glance, so it
+// gets the sunken surface and the mono face rather than body text styling.
+.reveal-seed-modal__seed-phrase {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 0.875rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-md);
+  background: var(--fns-surface-sunken);
+  color: var(--fns-text);
+  font-family: var(--fns-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  user-select: all;
+
+  &.break-anywhere {
+    line-break: anywhere;
+  }
+}

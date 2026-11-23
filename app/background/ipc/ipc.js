@@ -1,0 +1,222 @@
+const Sentry = require('@sentry/browser');
+const {localizeMessages} = require('../../utils/mainI18n');
+
+export const SIGIL = '@@RPC@@';
+
+let lastId = 0;
+
+export const nullServer = {
+  withMethod() {
+  },
+  withService() {
+  },
+  start() {
+  },
+  stop() {
+  },
+};
+
+function log() {
+  const electronApp = require('electron').app;
+  if (process.env.NODE_ENV === 'production' || (electronApp && electronApp.isPackaged)) {
+    return;
+  }
+
+  console.log(...arguments);
+}
+
+export function formatActionLog(methodName, status, duration, errorCode) {
+  let message = `[FurryFly action] ${methodName} ${status}`;
+
+  if (errorCode !== undefined && errorCode !== null) {
+    message += ` [${String(errorCode).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'ERROR'}]`;
+  }
+
+  if (Number.isFinite(duration)) {
+    message += ` (${Math.max(0, Math.round(duration))} ms)`;
+  }
+
+  return message;
+}
+
+// used to scrub sensitive info from RPC calls
+function sanitizeData(data, method) {
+  if (method.suppressLogging) {
+    const copy = JSON.parse(JSON.stringify(data));
+    copy.params = ['<SANITIZED>'];
+    return copy;
+  }
+
+  return data;
+}
+
+// used to scrub sensitive info from RPC responses
+function sanitizeRes(res, method) {
+  if (method.suppressLogging) {
+    return '<SANITIZED>';
+  }
+
+  return res;
+}
+
+export function makeServer(
+  ipcMain,
+  authorize = () => true,
+  actionLogger = message => console.log(message),
+) {
+  const methods = {};
+
+  const handler = (event, data) => {
+    if (!authorize(event)) {
+      return;
+    }
+    const method = methods[data.method];
+    const sendToRenderer = payload => {
+      if (
+        !event.sender
+        || (typeof event.sender.isDestroyed === 'function' && event.sender.isDestroyed())
+      ) {
+        return false;
+      }
+      event.sender.send(SIGIL, payload);
+      return true;
+    };
+
+    if (!data.id) {
+      log('IPC method call has no ID, aborting.');
+      return sendToRenderer(makeError(-32600, 'id not provided', null));
+    }
+
+    if (!method) {
+      log(`IPC method ${data.method} does not exist, aborting.`);
+      return sendToRenderer(makeError(-32601, 'method not found', data.id));
+    }
+
+    const actionStarted = Date.now();
+    actionLogger(formatActionLog(data.method, 'started'));
+
+    let params;
+    if (!Array.isArray(data.params)) {
+      params = [data.params];
+    } else {
+      params = data.params;
+    }
+
+    const cb = (err, res) => {
+      if (err) {
+        actionLogger(formatActionLog(
+          data.method,
+          'failed',
+          Date.now() - actionStarted,
+          err.code || 'ERROR',
+        ));
+        log('Sending IPC method error.', sanitizeData(data, method), err);
+        log('Stack:', err.stack);
+        Sentry.captureException(err);
+        // Background errors carry a messageKey instead of hardcoded English; put
+        // the selected language on err.message before it crosses to the renderer.
+        //
+        // Errors without a key stay on the synchronous path: localizing them would only
+        // add a promise turn, and the reply order is part of this layer's contract.
+        if (typeof err.messageKey !== 'string') {
+          return sendToRenderer(makeError(err.code || -1, err.message, data.id));
+        }
+        return localizeMessages(err)
+          .catch(() => err)
+          .then(localized => sendToRenderer(makeError(localized.code || -1, localized.message, data.id)));
+      }
+      actionLogger(formatActionLog(
+        data.method,
+        'succeeded',
+        Date.now() - actionStarted,
+      ));
+      log('Sending IPC method response.', sanitizeData(data, method), sanitizeRes(res, method));
+      return sendToRenderer(makeResponse(res, data.id));
+    };
+
+    log('Executing IPC method.', sanitizeData(data, method));
+    const maybePromise = method.apply(null, [...params, cb]);
+    if (maybePromise.then) {
+      maybePromise.then((res) => cb(null, res))
+        .catch((err) => cb(err));
+    }
+  };
+
+  const server = {
+    withMethod(service, name, method) {
+      methods[`${service}.${name}`] = method;
+    },
+    withService(sName, methods) {
+      Object.keys(methods).forEach((mName) => {
+        server.withMethod(sName, mName, methods[mName]);
+      });
+    },
+    start() {
+      ipcMain.on(SIGIL, handler);
+    },
+    stop() {
+      ipcMain.removeListener(SIGIL, handler);
+    },
+  };
+  return server;
+}
+
+export function makeClient(ipcRendererInjector, sName, methods) {
+  const mkSend = mName => (...params) => {
+    const ipcRenderer = ipcRendererInjector();
+    const id = ++lastId;
+
+    log('Dispatching IPC method call.', id, mName);
+
+    return new Promise((resolve, reject) => {
+      const handler = (event, data) => {
+        const jsonData = JSON.parse(data);
+        if (jsonData.id !== id) {
+          return;
+        }
+
+        ipcRenderer.off(SIGIL, handler);
+
+        if (jsonData.error) {
+          log('Received IPC error.', id, mName, jsonData.result);
+          return reject(jsonData.error);
+        }
+
+        log('Received IPC response.', id, mName, jsonData.result);
+        return resolve(jsonData.result);
+      };
+
+      ipcRenderer.send(SIGIL, {
+        jsonrpc: '2.0',
+        method: `${sName}.${mName}`,
+        params,
+        id,
+      });
+      ipcRenderer.on(SIGIL, handler);
+    });
+  };
+
+  return methods.reduce((acc, curr) => {
+    acc[curr] = mkSend(curr);
+    return acc;
+  }, {});
+}
+
+function makeResponse(result, id) {
+  return JSON.stringify({
+    jsonrpc: '2.0',
+    result,
+    id,
+  });
+}
+
+function makeError(code, message, id) {
+  return JSON.stringify({
+    jsonrpc: '2.0',
+    error: {
+      code,
+      message: message === undefined ? null : message,
+    },
+    id,
+  });
+}

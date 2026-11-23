@@ -1,0 +1,222 @@
+// Shared visual language for onboarding. Mixins only: this file is imported by
+// every step, so top-level rules here would be duplicated into each stylesheet.
+
+@import '../../variables';
+
+@mixin wizard-shell {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 34rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3.5vh, 2.5rem) clamp(1.25rem, 5vw, 2.5rem);
+  // Paint the page, not just the text: with a transparent root the window's own
+  // white showed through in light mode, so a white field sat on ice-white and the
+  // canvas token was never used.
+  background: var(--fns-canvas);
+  color: var(--fns-text);
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    padding: 1.25rem 0 0;
+  }
+
+  // The skeleton spells this both ways across screens; style both.
+  &__header_text,
+  &__header-text,
+  &__title {
+    margin: 0 0 0.625rem;
+    font-size: clamp(1.375rem, 2.1vw, 1.75rem);
+    font-weight: var(--fns-weight-bold);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--fns-text);
+  }
+
+  &__body-text,
+  &__check-box-description,
+  &__checkbox-description {
+    margin: 0 0 1.5rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--fns-text-secondary);
+  }
+
+  &__error,
+  &__error-container {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--fns-danger);
+
+    &:empty {
+      margin: 0;
+    }
+  }
+
+  &__info {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--fns-text-muted);
+
+    &:empty {
+      margin: 0;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1.5rem 0 0;
+  }
+}
+
+@mixin wizard-field {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  // 2rem (--fns-control-height) is a desktop toolbar size; a form field in a
+  // focused onboarding flow needs room to look like a field.
+  min-height: 3rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-lg);
+  background: var(--fns-surface-raised);
+  color: var(--fns-text);
+  transition:
+    border-color var(--fns-duration-fast) var(--fns-ease),
+    box-shadow var(--fns-duration-fast) var(--fns-ease);
+
+  // `:not(:disabled)` is not cosmetic here: the legacy dark theme paints every bare
+  // `input` (body.bob-theme-dark input = 0,1,2), which outranks `.field input`
+  // (0,1,1) and would cover the field surface with the canvas colour again.
+  input:not(:disabled) {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 2.875rem;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9375rem;
+
+    &::placeholder {
+      color: var(--fns-text-muted);
+    }
+  }
+
+  textarea:not(:disabled) {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 6rem;
+    padding: 0.75rem 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    resize: vertical;
+
+    &::placeholder {
+      color: var(--fns-text-muted);
+    }
+  }
+
+  &:focus-within {
+    border-color: var(--fns-brand);
+    box-shadow: var(--fns-focus-ring);
+  }
+
+  &--error {
+    border-color: var(--fns-danger);
+  }
+}
+
+@mixin wizard-cta {
+  box-sizing: border-box;
+  width: 100%;
+  // Tall enough to match the fields beside it; 2rem reads as a toolbar chip.
+  min-height: 3rem;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: var(--fns-radius-pill);
+  background: var(--fns-brand);
+  color: var(--fns-accent-contrast);
+  font: inherit;
+  font-weight: var(--fns-weight-bold);
+  cursor: pointer;
+  // Same feedback as %btn-primary: lift and glow rather than a brightness blink.
+  transition:
+    transform var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    box-shadow var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    filter var(--fns-motion-base, 220ms) var(--fns-motion-ease-out, ease);
+  transform: translateY(0) scale(1);
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.05);
+    box-shadow: var(--fns-glow-accent, 0 0 12px rgb(92 255 208 / 0.45));
+    transform: translateY(-1px) scale(1.01);
+  }
+
+  &:active:not(:disabled) {
+    filter: brightness(0.96);
+    box-shadow: none;
+    transform: translateY(0) scale(0.99);
+    transition-duration: var(--fns-motion-instant, 90ms);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--fns-focus-ring, 0 0 0 3px rgb(92 255 208 / 0.35));
+  }
+
+  &:disabled {
+    // The global `.extension_cta_button:disabled` rule is emitted by every file that
+    // imports variables.scss, so the last copy lands after this stylesheet and wins
+    // on equal specificity. Declaring the paint here makes this selector (0,3,0)
+    // and order-independent.
+    background: var(--fns-brand);
+    border: 0;
+    color: var(--fns-accent-contrast);
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+@mixin wizard-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-lg);
+  background: var(--fns-surface);
+  color: var(--fns-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--fns-duration-fast) var(--fns-ease),
+    background-color var(--fns-duration-fast) var(--fns-ease);
+
+  &:hover {
+    border-color: var(--fns-border-strong);
+  }
+
+  &--selected,
+  &[aria-pressed='true'] {
+    border-color: var(--fns-brand);
+    background: rgb(var(--fns-brand-rgb) / 0.12);
+  }
+}

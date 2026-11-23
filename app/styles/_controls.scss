@@ -1,0 +1,96 @@
+// Shared control mixins.
+//
+// Pages importing this get the button shapes the rest of the app uses; values come
+// from the design tokens so they follow the theme instead of being fixed per page.
+// Import it after `variables` (for the layout extend classes) and `tokens`.
+
+@mixin fns-button-base {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.4375rem 0.875rem;
+  border: 1px solid var(--fns-border-strong);
+  border-radius: var(--fns-radius-pill);
+  background: transparent;
+  color: var(--fns-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: var(--fns-weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  // Lift and glow rather than a colour blink, matching %btn-primary.
+  transition:
+    transform var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    box-shadow var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    background-color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    border-color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    filter var(--fns-motion-base, 220ms) var(--fns-motion-ease-out, ease);
+  transform: translateY(0) scale(1);
+
+  &:hover:not(:disabled) {
+    border-color: var(--fns-brand);
+    background: var(--fns-surface-raised);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.985);
+    transition-duration: var(--fns-motion-instant, 90ms);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fns-brand);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+  }
+}
+
+// Solid brand button. The disabled rules paint explicitly rather than relying on
+// opacity alone: the legacy `.extension_cta_button:disabled` rule is emitted by every
+// stylesheet that imports variables.scss and would otherwise win on source order.
+@mixin fns-button-primary {
+  @include fns-button-base;
+
+  border-color: transparent;
+  background: var(--fns-brand);
+  color: var(--fns-accent-contrast);
+
+  &:hover:not(:disabled) {
+    border-color: transparent;
+    background: var(--fns-brand);
+    filter: brightness(1.05);
+    box-shadow: var(--fns-glow-accent, 0 0 12px rgb(92 255 208 / 0.45));
+    transform: translateY(-1px) scale(1.015);
+  }
+
+  &:active:not(:disabled) {
+    filter: brightness(0.96);
+    box-shadow: none;
+    transform: translateY(0) scale(0.985);
+  }
+
+  &:disabled {
+    border-color: transparent;
+    background: var(--fns-brand);
+    color: var(--fns-accent-contrast);
+    opacity: 0.45;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+// Alias with a page-scoped name, so Settings reads naturally.
+@mixin settings-button($primary: false) {
+  @if $primary {
+    @include fns-button-primary;
+  } @else {
+    @include fns-button-base;
+  }
+}

@@ -1,0 +1,171 @@
+// Landing (first-run) screen: a wide two-column layout.
+//
+// Styling follows the FurryBox reference language: near-black canvas, tight
+// letter-spacing on the heading, one mint accent used sparingly, flat surfaces
+// separated by tone rather than shadow, and a pill primary action.
+//
+// Colours come from tokens.scss as CSS custom properties, so this page follows
+// whichever theme is active instead of hardcoding one palette.
+
+.landing {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  height: 100%;
+  padding: clamp(1.75rem, 4vh, 3.25rem) clamp(1.75rem, 6vw, 5rem);
+  overflow: auto;
+  background: var(--fns-canvas, #0a0b0d);
+  color: var(--fns-text, #ededed);
+
+  /* ---------------------------------------------------------------- pitch */
+  &__pitch {
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+    min-width: 0;
+    max-width: 34rem;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  &__mark {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    border-radius: 0.6875rem;
+    background: url('../../../assets/images/furryfly-logo.svg') center / contain no-repeat;
+    box-shadow: 0 0 20px rgb(var(--fns-brand-rgb, 62 230 180) / 0.22);
+  }
+
+  &__wordmark {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fns-text-secondary, #9aa0a8);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+    line-height: 1.18;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--fns-text, #ededed);
+  }
+
+  &__body {
+    margin: 0;
+    max-width: 32rem;
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    color: var(--fns-text-secondary, #9aa0a8);
+  }
+
+  &__rule {
+    display: block;
+    width: 4.5rem;
+    height: 1px;
+    margin-top: 0.25rem;
+    background: linear-gradient(90deg, var(--fns-brand, #3ee6b4), transparent);
+  }
+
+  /* -------------------------------------------------------------- actions */
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    min-width: 0;
+    padding: 1.5rem;
+    border: 1px solid var(--fns-border, #22262b);
+    border-radius: 1rem;
+    background: var(--fns-surface, #111316);
+  }
+
+  &__btn {
+    appearance: none;
+    box-sizing: border-box;
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--fns-text, #ededed);
+    background: transparent;
+    border: 1px solid var(--fns-border-strong, #31363d);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      background-color var(--fns-duration-fast, 120ms) var(--fns-ease, ease),
+      border-color var(--fns-duration-fast, 120ms) var(--fns-ease, ease),
+      color var(--fns-duration-fast, 120ms) var(--fns-ease, ease);
+
+    &:hover {
+      border-color: var(--fns-brand, #3ee6b4);
+      background: var(--fns-surface-raised, #1b1f24);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--fns-focus-ring, rgb(62 230 180 / 0.5));
+      outline-offset: 2px;
+    }
+  }
+
+  // The inverted fill was copied from a dark-canvas reference: near-white text colour
+  // used as a background. On the light theme that is a black slab, which read as a
+  // second, unrelated accent next to the mint brand. The primary action now carries
+  // the brand colour in every theme.
+  &__btn--primary {
+    color: var(--fns-accent-contrast, #04120f);
+    background: var(--fns-brand, #3ee6b4);
+    border-color: transparent;
+    font-weight: 700;
+
+    &:hover {
+      color: var(--fns-accent-contrast, #04120f);
+      background: var(--fns-brand, #3ee6b4);
+      filter: brightness(1.06);
+      border-color: transparent;
+    }
+  }
+
+  &__return {
+    margin-top: 0.125rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: var(--fns-brand, #3ee6b4);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+/* Narrow windows: actions come first, the pitch reads underneath them. */
+@media (max-width: 860px) {
+  .landing {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 1.75rem;
+  }
+
+  .landing__actions {
+    order: -1;
+  }
+
+  .landing__pitch {
+    max-width: none;
+  }
+}

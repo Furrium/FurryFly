@@ -1,0 +1,906 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono:300,400,500|Roboto:300,400,500,700,900');
+@import 'variables';
+@import 'tokens';
+@import 'styles/motion';
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, 'Roboto', sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+
+
+#root {
+  @extend %col-nowrap;
+  height: 100vh;
+  width: 100vw;
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 100;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+}
+
+// Extends
+i.arrow {
+  background-repeat: no-repeat;
+  background-size: cover;
+  height: 1.25rem;
+  width: 1.25rem;
+  display: inline-block;
+
+  &.right {
+    transform: rotate(-45deg);
+  }
+
+  &.left {
+    background-image: url('./assets/images/arrow-back-blue.svg');
+  }
+}
+
+body.bob-theme-dark {
+  // Follow the tokens rather than a fixed hex, so the shipped theme can be retuned
+  // in one place. The literal stays as a fallback for the first paint, before the
+  // token block applies.
+  background: var(--fns-canvas, #080b11);
+  color: var(--fns-text, #e6edf3);
+
+  &::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+  }
+
+  &::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-track {
+    background: var(--fns-canvas);
+  }
+
+  &::-webkit-scrollbar-thumb,
+  *::-webkit-scrollbar-thumb {
+    background-color: #30363d;
+    border: 3px solid var(--fns-canvas);
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover,
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: #484f58;
+  }
+
+  *::selection {
+    background: rgba(47, 129, 247, 0.42);
+    color: #ffffff;
+  }
+
+  #root,
+  .app,
+  .app__main-wrapper,
+  .app__content,
+  .content-area,
+  .settings,
+  .settings__content,
+  .topbar {
+    background: var(--fns-canvas);
+    color: #e6edf3;
+  }
+
+  .sidebar {
+    background: var(--fns-surface);
+    box-shadow: 1px 0 0 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .sidebar__action {
+    color: #e6edf3;
+
+    &:hover {
+      color: #ffffff;
+      background-color: rgb(var(--fns-brand-rgb) / 0.18);
+    }
+
+    &--selected {
+      background-color: rgb(var(--fns-brand-rgb) / 0.28);
+    }
+  }
+
+  .sidebar__footer,
+  .settings__content__section--disabled,
+  .dropdown__current-item,
+  .dropdown__option,
+  .dropdown__options,
+  .setting-menu,
+  .modal__wrapper,
+  .sidemodal__wrapper,
+  .app__login,
+  .app__component-wrapper {
+    background-color: var(--fns-surface);
+    color: #e6edf3;
+  }
+
+  // The onboarding surface only paints itself while it is still the small dialog.
+  // Full-bleed screens (landing, wizard, existing-options) sit directly on the
+  // canvas and take their surfaces from the design tokens; forcing a colour here
+  // dropped a var(--fns-surface) box onto the var(--fns-canvas) canvas in dark mode, and every
+  // token-based field inside it - also var(--fns-surface) - disappeared into it. Light mode
+  // has no equivalent rule, which is why the two themes disagreed.
+  .app__uninitialized:not(.app__uninitialized--full) {
+    background-color: var(--fns-surface);
+  }
+
+  .topbar,
+  .settings__nav,
+  .settings__content__section,
+  .sidebar__footer,
+  table,
+  .table,
+  .table__header,
+  .table__row,
+  .content-area,
+  input,
+  textarea,
+  select,
+  .addr-input__input,
+  .dropdown__current-item,
+  .dropdown__option,
+  .dropdown__options,
+  .settings__channel-card__input {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  // Onboarding fields used to be repainted here with hardcoded var(--fns-canvas) - the same
+  // colour as the dark canvas - so every field vanished into the page. They now take
+  // their surface from the design tokens via the wizard field mixin.
+
+  input,
+  textarea,
+  select,
+  .dropdown__current-item,
+  .dropdown__option,
+  .dropdown__options,
+  .settings__channel-card__input,
+  .addr-input__input,
+  .addr-input__input input,
+  .bid-search-input,
+  .bid-search-input__input,
+  .send__input,
+  .send__amount-input,
+  .send__network-fee__select,
+  .send__network-fee__fee-amount,
+  .send__input input,
+  .send__amount-input input,
+  .tld__input,
+  .search__input {
+    background-color: var(--fns-canvas);
+    color: #e6edf3;
+  }
+
+  input::placeholder,
+  textarea::placeholder,
+  .addr-input__input input::placeholder,
+  .send__input input::placeholder,
+  .send__amount-input input::placeholder,
+  .bid-search-input__input::placeholder,
+  .create-password__input input::placeholder,
+  .swt__input input::placeholder,
+  .import_password_input input::placeholder,
+  .import_enter_textarea::placeholder,
+  .login_password_input input::placeholder {
+    color: #7d8590;
+  }
+
+  .create-password__header_text,
+  .terms__header_text,
+  .import-header-text,
+  .existing-options__content__title,
+  .funding-options__content__title,
+  .swt__header-text,
+  .opt-in-analytics__header-text {
+    color: #e6edf3;
+  }
+
+  .settings__content__section__info__description,
+  .settings__channel-card__row span,
+  .login_subheader_text,
+  .sidebar__section,
+  .sidebar__footer__title,
+  .sidebar__footer__text,
+  .topbar__synced,
+  .account__header__section > .label,
+  .account__header__section > .subtext,
+  .account__empty-list,
+  .send__label,
+  .send__input-disclaimer,
+  .send__amount-input__unit,
+  .send__network-fee__fee-amount,
+  .addons-page__intro p,
+  .addons-page__channel-card p,
+  .addons-page__card p,
+  .addons-page__details,
+  .expiring-page__intro p,
+  .expiring-page__section-header p,
+  .receive__warning-subtitle,
+  .transactions__empty-list,
+  .transactions__go-to__text,
+  .transactions__go-to__total,
+  .create-password__body-text,
+  .terms_subheader,
+  .import_checkbox_text,
+  .import_warning_text,
+  .import_enter_warning_text,
+  .swt__body-text,
+  .funding-options__content__body-text,
+  .existing-options__footer__tip,
+  .opt-in-analytics__body-text,
+  .opt-in-analytics__checkbox-description,
+  small {
+    color: #9aa4af;
+  }
+
+  .existing-options__header,
+  .existing-options__footer,
+  .terms__header {
+    background-color: var(--fns-surface);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .existing-options__content__option {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+
+    &:hover {
+      border-color: var(--fns-brand);
+      box-shadow: 0 0 0 1px rgba(47, 129, 247, 0.22);
+    }
+  }
+
+  .terms__button--accepted {
+    color: #e6edf3;
+  }
+
+  .terms__html-box {
+    background: var(--fns-surface-sunken);
+
+    .page,
+    .section,
+    .layoutArea,
+    .column {
+      background-color: var(--fns-surface-sunken) !important;
+    }
+
+    span,
+    p,
+    li {
+      color: #e6edf3 !important;
+    }
+  }
+
+  .exchange-readiness,
+  .exchange-seller-tools,
+  .exchange-docs-banner,
+  .addons-page__channel-card,
+  .addons-page__card,
+  .addons-page__external-notice,
+  .addons__notice,
+  .addons__channel-card,
+  .addons__card,
+  .expiring__notice,
+  .expiring__table,
+  .settings__channel-card,
+  .send__container,
+  .receive__container,
+  .account__header {
+    background-color: var(--fns-surface);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #e6edf3;
+  }
+
+  .receive__title,
+  .receive__explanation,
+  .receive__addresses-help,
+  .receive__addresses-row,
+  .receive__addresses-address {
+    color: #e6edf3;
+  }
+
+  .receive__disclaimer,
+  .receive__addresses-row--header,
+  .receive__addresses-state {
+    color: #9aa4af;
+  }
+
+  .receive__address-display,
+  .receive__addresses-table,
+  .receive__address-lookup,
+  .receive__addresses-filter,
+  .receive__addresses-label,
+  .receive__addresses-row {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .receive__addresses-filter,
+  .receive__addresses-label {
+    background-color: var(--fns-canvas);
+    color: #e6edf3;
+  }
+
+  .receive__addresses-row--header {
+    background-color: var(--fns-surface-raised);
+  }
+
+  .receive__address-lookup-result {
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #9aa4af;
+  }
+
+  .receive__address-lookup-result--found,
+  .receive__address-lookup-title {
+    color: #e6edf3;
+  }
+
+  .receive__address-status {
+    background: rgba(255, 255, 255, 0.08);
+    color: #c9d1d9;
+  }
+
+  .receive__address-status--current {
+    background: rgba(47, 129, 247, 0.22);
+    color: var(--fns-brand);
+  }
+
+  .receive__address-status--used {
+    background: rgba(63, 185, 80, 0.18);
+    color: #7ee787;
+  }
+
+  .addons-page__card-header span,
+  .expiring-page__status--later {
+    background-color: rgba(47, 129, 247, 0.16);
+    color: var(--fns-brand);
+  }
+
+  .expiring-page__status--soon {
+    background-color: rgba(255, 224, 0, 0.16);
+    color: #f2cc60;
+  }
+
+  .expiring-page__status--expired {
+    background-color: rgba(255, 47, 31, 0.16);
+    color: #ff7b72;
+  }
+
+  .table__header {
+    background-color: var(--fns-surface-raised);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .table__header__item {
+    color: #c9d1d9;
+  }
+
+  .table__row {
+    background-color: var(--fns-surface-sunken);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #e6edf3;
+
+    &:hover {
+      background-color: rgba(47, 129, 247, 0.08) !important;
+    }
+  }
+
+  .table__row__item,
+  .watching-table__empty-row,
+  .bids-table__empty-row,
+  .expiring-page__empty {
+    color: #c9d1d9;
+  }
+
+  .watching-table__create-row:hover,
+  .watching-table__create-row:active {
+    background-color: var(--fns-surface-sunken) !important;
+  }
+
+  .bids__filter {
+    color: var(--fns-brand);
+  }
+
+  .bids__filter--active {
+    color: #e6edf3;
+  }
+
+  .account__transactions__loading {
+    color: #9aa4af;
+  }
+
+  .domain-manager__page-control__page--active,
+  .transactions__page-control__page--active {
+    background-color: var(--fns-brand);
+    color: var(--fns-accent-contrast);
+    box-shadow: 0 0 0 1px rgb(var(--fns-brand-rgb) / 0.42);
+  }
+
+  .domains__bid-card__redeem-btn {
+    background-color: rgba(255, 224, 0, 0.12);
+    border: 1px solid rgba(255, 224, 0, 0.54);
+    color: #f2cc60;
+
+    div {
+      color: #f2cc60;
+    }
+  }
+
+  .domains__bid-card__redeem-btn:hover {
+    background-color: rgba(255, 224, 0, 0.18);
+  }
+
+  .cards__card {
+    color: #e6edf3;
+  }
+
+  .cards__card--yellow {
+    background-color: rgba(255, 224, 0, 0.14);
+    border-color: rgba(255, 224, 0, 0.68);
+
+    .title,
+    .title strong {
+      color: #f2cc60;
+    }
+
+    .subtitle {
+      color: #e6edf3;
+    }
+  }
+
+  .cards__card--yellow:hover {
+    background-color: rgba(255, 224, 0, 0.2);
+  }
+
+  .cards__card--red {
+    background-color: rgba(255, 47, 31, 0.12);
+    border-color: rgba(255, 123, 114, 0.6);
+  }
+
+  .cards__card--red .title,
+  .cards__card--red .title strong {
+    color: #ff7b72;
+  }
+
+  .cards__card--red .subtitle,
+  .cards__card--green .subtitle {
+    color: #e6edf3;
+  }
+
+  .cards__card--green {
+    background-color: rgba(35, 134, 54, 0.14);
+    border-color: rgba(63, 185, 80, 0.58);
+  }
+
+  .cards__card--green .title,
+  .cards__card--green .title strong {
+    color: #7ee787;
+  }
+
+  .bid-status__text {
+    color: #c9d1d9;
+  }
+
+  .account__header {
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .account__header__section:first-child {
+    border-right-color: rgba(255, 255, 255, 0.18);
+  }
+
+  tr,
+  th,
+  td {
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #e6edf3;
+  }
+
+  th {
+    background-color: var(--fns-surface-raised);
+  }
+
+  .dropdown__current-item,
+  .dropdown__option,
+  .dropdown__options,
+  select,
+  .settings__channel-card__input {
+    background-color: var(--fns-surface-sunken);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: #e6edf3;
+  }
+
+  .dropdown__current-item::after {
+    border-color: #9aa4af;
+  }
+
+  .dropdown__options {
+    border-top-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.28);
+  }
+
+  .dropdown__option:hover {
+    background-color: rgba(47, 129, 247, 0.16);
+  }
+
+  .login {
+    color: #e6edf3;
+  }
+
+  .login_password_input {
+    background-color: var(--fns-surface-sunken);
+    box-shadow: 0 0 0 1.25px rgba(255, 255, 255, 0.16);
+    color: #e6edf3;
+  }
+
+  .app__login {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 38px rgba(0, 0, 0, 0.32);
+  }
+
+  // Hover treatment for secondary, page-background buttons only.
+  //
+  // The selector list used to start with bare `button`, which matched every button in
+  // the app at (0,2,2) - enough to override a component's own `.foo__cta` label rule at
+  // (0,2,0). On solid primary buttons that recoloured the text to the same mint as the
+  // background, so the label vanished on hover, and that is not something :not() should
+  // paper over: the rule simply was not meant for them.
+  .settings__content__section__cta,
+  .settings__view-api-btn,
+  .settings__secondary-btn,
+  .addons-page__docs-button,
+  .addons-page__actions button,
+  .addons-page__notice-actions button,
+  .addons-page__channel-controls button,
+  .expiring-page__refresh,
+  .watching__download,
+  .watching__import,
+  .watching__reset,
+  .watching__cancel {
+    &:focus,
+    &:hover {
+      background-color: rgba(47, 129, 247, 0.16);
+      border-color: var(--fns-brand);
+      color: var(--fns-brand);
+    }
+
+    &:disabled {
+      background-color: rgba(139, 148, 158, 0.12);
+      border-color: rgba(139, 148, 158, 0.24);
+      color: #7d8590;
+    }
+  }
+
+  // Disabled styling still applies to every button: unlike the hover tint, greying out
+  // an inactive control is correct for primaries too. They are excluded only because
+  // they paint their own disabled state (brand fill, dimmed) and this rule is more
+  // specific than theirs.
+  button:disabled:not(.extension_cta_button):not(.create_cta):not(.login_cta) {
+    background-color: rgba(139, 148, 158, 0.12);
+    border-color: rgba(139, 148, 158, 0.24);
+    color: #7d8590;
+  }
+
+  .send__title,
+  .send__confirm__label,
+  .send__confirm__address,
+  .send__confirm__time-text,
+  .send__confirm__summary-label,
+  .send__confirm__summary-amount,
+  .send__confirm__summary-fee,
+  .send__confirm__summary-total {
+    color: #e6edf3;
+  }
+
+  .send__container {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  }
+
+  .send__input,
+  .addr-input__input,
+  .send__amount-input,
+  .send__network-fee__select,
+  .send__network-fee__fee-amount,
+  .bid-search-input {
+    box-shadow: 0 0 0 1.25px rgba(255, 255, 255, 0.16);
+  }
+
+  .send__amount-input__max-btn {
+    background-color: rgba(47, 129, 247, 0.22);
+    color: var(--fns-brand);
+  }
+
+  .addr-input__input {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .addr-input__input:focus-within {
+    border-color: var(--fns-brand);
+    box-shadow: 0 0 0 1.25px rgba(47, 129, 247, 0.75);
+  }
+
+  .addr-input .alert {
+    background-color: transparent;
+    color: #9aa4af;
+  }
+
+  .addr-input .alert--error {
+    background-color: rgba(255, 47, 31, 0.12);
+    border: 1px solid rgba(255, 47, 31, 0.24) !important;
+    border-radius: 0.35rem;
+    color: #ff7b72;
+    margin: 0.4rem 0 0 0 !important;
+    padding: 0.55rem 0.75rem !important;
+  }
+
+  .send__network-fee__select::after {
+    border-color: #9aa4af;
+  }
+
+  .send__confirm__summary {
+    background-color: rgba(47, 129, 247, 0.12);
+    border: 1px solid rgba(47, 129, 247, 0.22);
+  }
+
+  .send__confirm__alias {
+    color: var(--fns-brand);
+
+    &:hover,
+    &:focus {
+      color: #a5d6ff;
+    }
+
+    &:active {
+      color: var(--fns-brand);
+    }
+
+    &:focus-visible {
+      outline-color: rgba(121, 192, 255, 0.82);
+    }
+  }
+
+  .send__progress-bar__dot--empty {
+    background-color: var(--fns-canvas);
+  }
+
+  .auction-panel {
+    background-color: #111820;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
+  }
+
+  .auction-panel__title,
+  .auction-panel__header__row,
+  .domains__bid-now__form__row__label,
+  .domains__bid-now__own-highest-bid__title,
+  .domains__bid-now__title,
+  .domains__watch__text {
+    color: #e6edf3;
+  }
+
+  .auction-panel__title {
+    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .auction-panel__footer,
+  .domains__bid-now__divider {
+    border-color: rgba(255, 255, 255, 0.08);
+    background-color: transparent;
+  }
+
+  .domains__bid-now__info__disclaimer,
+  .domains__bid-now__HNS-status,
+  .domains__bid-now__mask {
+    color: #9aa4af;
+  }
+
+  .domains__bid-now__form__row__input {
+    background-color: var(--fns-canvas);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 0 0 1.25px rgba(255, 255, 255, 0.06);
+    color: #e6edf3;
+  }
+
+  .domains__bid-now__form__row__input:focus-within {
+    border-color: var(--fns-brand);
+    box-shadow: 0 0 0 1.25px rgba(47, 129, 247, 0.75);
+  }
+
+  .domains__bid-now__form__row__input::before {
+    filter: brightness(0) invert(1);
+    opacity: 0.82;
+  }
+
+  .domains__bid-now__form__row__input input {
+    background-color: transparent;
+    color: #e6edf3;
+  }
+
+  .domains__bid-now__form__row__input input::placeholder {
+    color: #7d8590;
+  }
+
+  .auction-graph {
+    background-color: #1b242e;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .auction-graph__column__headline {
+    color: #e6edf3;
+  }
+
+  .auction-graph__column__text {
+    color: #c9d1d9;
+    opacity: 0.64;
+  }
+
+  .auction-graph__current-block {
+    background-color: rgba(47, 129, 247, 0.18);
+    color: var(--fns-brand);
+  }
+
+  .receive__warning-title,
+  .receive__title {
+    color: #e6edf3;
+  }
+
+  .receive__warning-icon {
+    filter: invert(1);
+    opacity: .65;
+  }
+
+  .receive__address-display {
+    background-color: var(--fns-surface-sunken);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .receive__address,
+  .receive__disclaimer {
+    color: #c9d1d9;
+  }
+
+  .transactions__header {
+    background-color: #111820;
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .transactions__search,
+  .transactions__search input {
+    background-color: var(--fns-surface-sunken) !important;
+    color: #e6edf3;
+  }
+
+  .transaction {
+    background-color: var(--fns-canvas);
+    border-bottom-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .transaction__title,
+  .transaction__subtitle,
+  .transaction__party,
+  .transaction__party__btn,
+  .transaction__tx-timestamp,
+  .transaction__balance-after,
+  .transactions__balance-summary__label,
+  .transaction__number--neutral {
+    color: #c9d1d9;
+  }
+
+  .transactions__balance-summary__value {
+    color: #e6edf3;
+  }
+
+  .transaction__title--pending,
+  .transaction__number--pending {
+    color: #8b949e;
+  }
+
+  .transaction__tld-link {
+    color: #c9d1d9;
+  }
+
+  .sign-message__top-label,
+  .verify-message__top-label {
+    color: #e6edf3;
+  }
+
+  .sign-message__content__textarea,
+  .verify-message__content__textarea {
+    background-color: var(--fns-canvas);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .sign-message__content__textarea__title,
+  .verify-message__content__textarea__title {
+    background-color: var(--fns-surface-raised);
+    border-bottom-color: rgba(255, 255, 255, 0.16);
+    color: #e6edf3;
+  }
+
+  .sign-message__content__textarea textarea,
+  .verify-message__content__textarea textarea {
+    background-color: var(--fns-canvas);
+    color: #e6edf3;
+  }
+
+  .copy-btn {
+    background-color: rgba(47, 129, 247, 0.22);
+    color: var(--fns-brand);
+  }
+
+  .modal__wrapper,
+  .sidemodal__wrapper,
+  .mini-modal,
+  .idle-modal {
+    color: #e6edf3;
+  }
+
+  .idle-modal__time {
+    background-color: rgba(47, 129, 247, 0.12);
+    color: #e6edf3;
+  }
+
+  .alert--warning {
+    background-color: rgba(255, 224, 0, 0.08);
+    border-color: rgba(255, 224, 0, 0.32);
+    color: #f2cc60;
+  }
+
+  .alert--error {
+    background-color: rgba(255, 47, 31, 0.08);
+  }
+
+  .alert--success {
+    background-color: rgba(11, 202, 107, 0.08);
+  }
+
+  .alert--info {
+    background-color: rgba(47, 129, 247, 0.08);
+  }
+
+  .settings__content__section--with-footer {
+    align-items: flex-start;
+  }
+
+  .settings__content__section--with-footer .settings__content__section__info {
+    flex: 0 1 42%;
+    min-width: 18rem;
+  }
+
+  .settings__content__section--with-footer .settings__content__section__footer {
+    flex: 1 1 58%;
+    min-width: 24rem;
+  }
+
+  .settings__channel-card {
+    background-color: #111820;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: .5rem;
+    padding: .75rem;
+  }
+
+  .settings__channel-card__actions button {
+    border: 1px solid var(--fns-brand);
+    border-radius: .5rem;
+    color: var(--fns-brand);
+    background: transparent;
+    font-size: .875rem;
+    padding: .45rem .7rem;
+  }
+
+  .settings__label {
+    color: var(--fns-text-secondary);
+  }
+
+  .settings__nav__item:hover,
+  .setting-menu__items__item:hover {
+    background-color: rgb(var(--fns-brand-rgb) / 0.14);
+  }
+}

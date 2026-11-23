@@ -1,0 +1,44 @@
+@import '../../variables.scss';
+
+// Step progress for the onboarding wizard. Colour comes from tokens, so the bar
+// follows the light, dark and neon themes instead of being a fixed blue.
+.status {
+  &__step-number {
+    flex: 0 0 auto;
+    min-width: 2rem;
+    margin-left: 0.75rem;
+    color: var(--fns-text-muted);
+    font-size: 0.6875rem;
+    font-weight: var(--fns-weight-medium);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+}
+
+.status_bar_container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.status_bar {
+  display: flex;
+  flex: 1 0 auto;
+  gap: 4px;
+  height: 4px;
+}
+
+.status_bar_element {
+  flex: 1 0 auto;
+  border-radius: var(--fns-radius-pill);
+  background-color: var(--fns-border);
+  transition: background-color var(--fns-duration-base) var(--fns-ease);
+
+  &__active {
+    background-color: var(--fns-brand);
+  }
+}
+
+.status_bar_text {
+  color: var(--fns-text-muted);
+}

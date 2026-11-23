@@ -1,0 +1,39 @@
+@import '../../../variables';
+@import '../wizard';
+
+// Steps 1 and 2 share this skeleton; .login_password_input is also used by the
+// login screen, so it stays here rather than moving with the screen.
+.create-password {
+  @include wizard-shell;
+
+  &__input {
+    @include wizard-field;
+    margin-bottom: 0.25rem;
+  }
+
+  &__footer {
+    button,
+    .extension_cta_button,
+    .create_cta {
+      @include wizard-cta;
+    }
+  }
+}
+
+.login_password_input {
+  @include wizard-field;
+  width: 90%;
+  margin: 0.625rem 0;
+}
+
+.create_back {
+  margin-right: 7px;
+}
+
+.create_status_bar {
+  margin: 0.8rem 0 1rem;
+}
+
+.clickable {
+  cursor: pointer;
+}

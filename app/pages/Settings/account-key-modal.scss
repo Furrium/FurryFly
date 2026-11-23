@@ -1,0 +1,28 @@
+@import '../../variables';
+@import '../../tokens';
+@import '../../styles/controls';
+
+.account-key {
+  &__instructions {
+    margin-bottom: 1rem;
+    color: var(--fns-text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  // Same treatment as the seed phrase: it is copied or written down, so it is set in
+  // mono on a sunken surface.
+  &__seed-phrase {
+    margin: 0 auto;
+    padding: 0.875rem;
+    border: 1px solid var(--fns-border);
+    border-radius: var(--fns-radius-md);
+    background: var(--fns-surface-sunken);
+    color: var(--fns-text);
+    font-family: var(--fns-font-mono);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    line-break: anywhere;
+    user-select: all;
+  }
+}

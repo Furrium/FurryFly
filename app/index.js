@@ -1,0 +1,46 @@
+import {clearDeeplink, setDeeplink, setDeeplinkParams} from "./ducks/app";
+
+require('./sentry');
+
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import Root from './pages/Root';
+import { history, store } from './store/configureStore';
+import './global.scss';
+import { showError } from './ducks/notifications';
+import {ipcRenderer} from "electron";
+import handleDeeplink from './deeplink'
+import traceDeeplink from './utils/deeplinkTrace';
+
+window.addEventListener('error', (e) => {
+  store.dispatch(showError(e.message));
+});
+
+ipcRenderer.on('ipcToRedux', (_, message) => {
+  if (message && message.type) {
+    store.dispatch(message);
+  }
+});
+
+ipcRenderer.on('deeplink', (_, message) => {
+  traceDeeplink('renderer-ipc-deeplink', {
+    url: message,
+    path: history.location && `${history.location.pathname}${history.location.search || ''}${history.location.hash || ''}`,
+  });
+  handleDeeplink(message);
+});
+
+history.listen(location => {
+  const state = store.getState();
+  const deeplink = state.app.deeplink;
+  if (deeplink) {
+    store.dispatch(clearDeeplink());
+    handleDeeplink(deeplink);
+    throw new Error('route change disallowed -- this error is intentional');
+  }
+});
+
+const root = createRoot(document.getElementById('root'));
+root.render(
+  <Root store={store} history={history} />
+);

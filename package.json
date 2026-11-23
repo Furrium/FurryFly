@@ -1,0 +1,175 @@
+{
+  "name": "furryfly-wallet",
+  "productName": "FurryFly",
+  "author": "Kyokan Group, Inc.",
+  "version": "2.3.21",
+  "description": "FurryFly - a Handshake wallet, name auction manager and full node.",
+  "scripts": {
+    "build": "node ./scripts/package.js",
+    "build-renderer": "cross-env NODE_ENV=production webpack --config ./configs/webpack.config.renderer.prod.babel.js",
+    "dev": "cross-env START_HOT=1 npm run start-renderer-dev",
+    "package-ci": "npm run postinstall && npm run build && electron-builder --win --x64 --publish always",
+    "package-win": "node ./scripts/package.js && node scripts/force-goosig-mini-gmp.js && electron-builder build --win --x64 --arm64=false --publish never",
+    "prestart": "npm run build",
+    "start": "cross-env NODE_ENV=production electron ./dist/main.js",
+    "start-main-dev": "cross-env NODE_ENV=development electron --inspect=5858 ./dist/main.js",
+    "start-renderer-dev": "cross-env NODE_ENV=development webpack-dev-server --config configs/webpack.config.renderer.dev.babel.js",
+    "postinstall": "node scripts/rebuild-native.js && node scripts/force-goosig-mini-gmp.js",
+    "clean": "node ./scripts/clean.js",
+    "test:sync": "node scripts/sync/run.cjs",
+    "pretest": "webpack --config ./configs/webpack.config.test.babel.js",
+    "test": "tape -r jsdom-global/register ./test-dist/test.js && node --test scripts/tests/basket-service.test.cjs scripts/tests/register-all-service.test.cjs scripts/tests/branding.test.cjs && npm run test:packaged-harness",
+    "test:f": "cross-env TEMP=F:\\FNS\\tmp TMP=F:\\FNS\\tmp npm test",
+    "test:packaged-harness": "node --test scripts/tests/packaged-acceptance.test.cjs scripts/tests/product-runtime.test.cjs scripts/tests/interactive-product.test.cjs scripts/tests/restore-runtime.test.cjs scripts/tests/embedded-restore.test.cjs scripts/tests/acceptance-routes.test.cjs scripts/tests/renderer-boundary.test.cjs scripts/tests/dependency-hardening.test.cjs scripts/tests/websocket-policy.test.cjs",
+    "add-locale": "node scripts/add-locale.js",
+    "check-all-locales": "node scripts/check-all-locales.js",
+    "check-locale": "node scripts/check-locale.js",
+    "preview-locale": "webpack --config scripts/locale-preview/webpack.config.js"
+  },
+  "main": "./dist/main.js",
+  "build": {
+    "productName": "FurryFly",
+    "appId": "com.furryfly.wallet",
+    "npmRebuild": false,
+    "protocols": {
+      "name": "furryfly-wallet",
+      "schemes": [
+        "furryfly"
+      ]
+    },
+    "files": [
+      "dist/",
+      "package.json",
+      {
+        "from": "locales",
+        "to": "locales"
+      },
+      {
+        "from": "node_modules/hsd/lib/covenants",
+        "to": "app",
+        "filter": [
+          "names.db",
+          "names.json"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "msi"
+      ]
+    },
+    "directories": {
+      "buildResources": "resources",
+      "output": "release"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kyokan/bob-electron.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kyokan/bob-wallet/issues/new?template=bug_report.md"
+  },
+  "license": "GPL-3.0-only",
+  "keywords": [],
+  "homepage": "https://bobwallet.io/",
+  "overrides": {
+    "@babel/runtime": "7.26.10",
+    "ajv@^6": "6.14.0",
+    "bdb": "1.6.2",
+    "get-func-name": "2.0.2",
+    "immutable": "4.3.9",
+    "lodash": "4.18.1",
+    "node-fetch": "2.7.0",
+    "picomatch": "2.3.2",
+    "path-to-regexp": "1.9.0",
+    "tmp": "0.2.7",
+    "password-prompt": {
+      "cross-spawn": "6.0.6",
+      "semver": "5.7.2"
+    },
+    "express": {
+      "path-to-regexp": "0.1.13"
+    },
+    "react-router": {
+      "path-to-regexp": "1.9.0"
+    },
+    "shakedex": {
+      "tar": "7.5.22"
+    }
+  },
+  "devDependencies": {
+    "@babel/cli": "7.20.7",
+    "@babel/core": "7.20.12",
+    "@babel/eslint-parser": "7.19.1",
+    "@babel/plugin-proposal-class-properties": "7.18.6",
+    "@babel/plugin-proposal-decorators": "7.20.13",
+    "@babel/plugin-syntax-bigint": "7.8.3",
+    "@babel/preset-env": "7.20.2",
+    "@babel/preset-react": "7.18.6",
+    "@babel/register": "7.18.9",
+    "@cfaester/enzyme-adapter-react-18": "0.6.0",
+    "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
+    "babel-loader": "9.1.2",
+    "cross-env": "7.0.3",
+    "css-loader": "6.7.3",
+    "electron": "43.1.0",
+    "electron-builder": "^26.18.0",
+    "enzyme": "3.11.0",
+    "jsdom": "21.1.0",
+    "jsdom-global": "3.0.2",
+    "mini-css-extract-plugin": "2.7.2",
+    "node-polyfill-webpack-plugin": "2.0.1",
+    "react-refresh": "0.14.0",
+    "redux-logger": "3.0.6",
+    "sass": "1.57.1",
+    "sass-loader": "13.2.0",
+    "sinon": "15.0.1",
+    "style-loader": "3.3.1",
+    "tape": "5.6.3",
+    "webpack": "5.108.4",
+    "webpack-bundle-analyzer": "4.7.0",
+    "webpack-cli": "5.0.1",
+    "webpack-dev-server": "4.11.1"
+  },
+  "dependencies": {
+    "@rithvikvibhu/connected-react-router": "6.9.3",
+    "@sentry/electron": "7.15.0",
+    "bcrypto": "5.4.0",
+    "bcurl": "0.2.0",
+    "bdb": "1.6.2",
+    "bignumber.js": "9.1.1",
+    "binet": "0.3.7",
+    "bns": "0.15.0",
+    "bval": "0.1.7",
+    "classnames": "2.3.2",
+    "copy-to-clipboard": "3.3.3",
+    "deep-equal": "2.2.0",
+    "electron-debug": "3.2.0",
+    "hdns": "0.8.0",
+    "history": "4.10.1",
+    "hs-airdrop": "0.10.0",
+    "hsd": "github:handshake-org/hsd#v6.1.1",
+    "hsd-ledger": "github:handshake-org/hsd-ledger#v2.0.2",
+    "isomorphic-fetch": "3.0.0",
+    "jsonschema": "1.4.1",
+    "lodash.throttle": "4.1.1",
+    "mixpanel": "0.17.0",
+    "moment": "2.31.0",
+    "prop-types": "15.8.1",
+    "punycode": "2.3.0",
+    "qrcode.react": "3.1.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-redux": "8.0.5",
+    "react-router": "5.3.3",
+    "react-router-dom": "5.3.3",
+    "redux": "4.2.0",
+    "redux-thunk": "2.4.2",
+    "semver": "7.8.5",
+    "shakedex": "0.0.19",
+    "source-map-support": "0.5.21",
+    "uuid": "14.0.1",
+    "winston": "3.8.2"
+  }
+}

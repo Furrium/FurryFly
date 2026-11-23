@@ -1,0 +1,433 @@
+import React, { Component } from 'react';
+import { withRouter } from 'react-router-dom';
+import { shell } from 'electron';
+import PropTypes from 'prop-types';
+import { connect } from 'react-redux';
+import cn from 'classnames';
+import moment from 'moment';
+import throttle from 'lodash.throttle';
+
+import * as names from '../../ducks/names';
+import * as walletActions from '../../ducks/walletActions';
+import {
+  formatName,
+  isAvailable,
+  isBidding,
+  isClosed,
+  isComingSoon,
+  isOpening,
+  isReserved,
+  isLockedUp,
+  isReveal,
+} from '../../utils/nameHelpers';
+import BidActionPanel from './BidActionPanel';
+import Collapsible from '../../components/Collapsible';
+import Blocktime from '../../components/Blocktime';
+import AuctionGraph from '../../components/AuctionGraph';
+import { showError, showSuccess } from '../../ducks/notifications';
+import VickreyProcess from './VickreyProcess';
+import BidHistory from './BidHistory';
+import Records from '../../components/Records';
+import Alert from '../../components/Alert';
+import './domains.scss';
+import { clientStub as aClientStub } from '../../background/analytics/client';
+import NameClaimModal from "../../components/NameClaimModal";
+import {I18nContext} from "../../utils/i18n";
+import {
+  hasPendingMetadataWarning,
+  normalizeAuctionDomain,
+} from '../../utils/auctionDomain';
+
+const Sentry = require('@sentry/electron/renderer');
+
+const analytics = aClientStub(() => require('electron').ipcRenderer);
+
+@withRouter
+@connect(
+  (state, ownProps) => {
+    const {name} = ownProps.match.params;
+    const domain = normalizeAuctionDomain(state.names[name]);
+    return {
+      domain,
+      chain: state.node.chain,
+      explorer: state.node.explorer,
+      walletRequestGeneration: state.wallet.requestGeneration || 0,
+      pendingTransactionsWarning: hasPendingMetadataWarning(
+        domain,
+        state.wallet.pendingTransactionsWarning,
+      ),
+    };
+  },
+  dispatch => ({
+    getNameInfo: (tld, options) => dispatch(names.getNameInfo(tld, options)),
+    showSuccess: (message) => dispatch(showSuccess(message)),
+    showError: (message) => dispatch(showError(message)),
+    fetchPendingTransactions: () => dispatch(walletActions.fetchPendingTransactions()),
+  }),
+)
+export default class Auction extends Component {
+  static propTypes = {
+    history: PropTypes.shape({
+      push: PropTypes.func.isRequired,
+    }),
+    location: PropTypes.shape({
+      pathname: PropTypes.string.isRequired,
+    }),
+    match: PropTypes.shape({
+      params: PropTypes.shape({
+        name: PropTypes.string.isRequired,
+      }),
+    }),
+    getNameInfo: PropTypes.func.isRequired,
+    showSuccess: PropTypes.func.isRequired,
+    showError: PropTypes.func.isRequired,
+    fetchPendingTransactions: PropTypes.func.isRequired,
+    domain: PropTypes.object,
+    chain: PropTypes.object,
+    explorer: PropTypes.object.isRequired,
+    walletRequestGeneration: PropTypes.number.isRequired,
+    pendingTransactionsWarning: PropTypes.bool.isRequired,
+  };
+
+  state = {
+    isShowingClaimModal: false,
+    isLoading: false,
+    loadError: '',
+    pendingMetadataWarning: false,
+  };
+
+  isMountedForRequests = false;
+  loadGeneration = 0;
+  loadController = null;
+
+  static contextType = I18nContext;
+
+  async componentDidMount() {
+    this.isMountedForRequests = true;
+    await this.loadName();
+    analytics.screenView('Auction');
+  }
+
+  componentDidUpdate(prevProps) {
+    if (
+      this.getDomain() !== prevProps.match.params.name
+      || this.props.walletRequestGeneration !== prevProps.walletRequestGeneration
+    ) {
+      this.refreshInfo.cancel();
+      this.loadName();
+      return;
+    }
+
+    if (this.props.chain.height !== prevProps.chain.height) {
+      this.refreshInfo();
+    }
+  }
+
+  componentWillUnmount() {
+    this.isMountedForRequests = false;
+    this.loadGeneration++;
+    this.loadController?.abort();
+    this.refreshInfo.cancel();
+  }
+
+  loadName = async () => {
+    const request = ++this.loadGeneration;
+    this.loadController?.abort();
+    this.loadController = new AbortController();
+    const {signal} = this.loadController;
+    if (this.isMountedForRequests) {
+      this.setState({isLoading: true, loadError: '', pendingMetadataWarning: false});
+    }
+
+    try {
+      await this.props.getNameInfo(this.getDomain(), {signal});
+      if (!this.isMountedForRequests || request !== this.loadGeneration) return;
+      this.setState({isLoading: false});
+    } catch (e) {
+      if (!this.isMountedForRequests || request !== this.loadGeneration) return;
+      if (e.code === 'STALE_WALLET_REQUEST' || signal.aborted) return;
+      console.error(e);
+      Sentry.captureException(e);
+      const t = this.context.t;
+      const message = e.message || t('auctionLoadErr');
+      this.setState({loadError: message});
+      this.props.showError(`${message} ${t('auctionTryAgainSuffix')}`);
+      if (this.isMountedForRequests && request === this.loadGeneration) {
+        this.setState({isLoading: false});
+      }
+      return;
+    }
+
+    try {
+      await this.props.fetchPendingTransactions();
+    } catch (e) {
+      if (!this.isMountedForRequests || request !== this.loadGeneration) return;
+      if (e.code === 'STALE_WALLET_REQUEST' || signal.aborted) return;
+      console.error('Could not load pending auction metadata.', e);
+      Sentry.captureException(e);
+      this.setState({pendingMetadataWarning: true});
+    }
+  };
+
+  refreshInfo = throttle(() => {
+    this.loadName();
+  }, 10*1000, {leading: true, trailing: true}) // 10 seconds
+
+  getDomain = () => this.props.match.params.name;
+
+  isOwned = () => {
+    const {domain} = this.props;
+    return domain && domain.isOwner;
+  };
+
+  render() {
+    return (
+      <div className="domains">
+        { this.state.isShowingClaimModal && (
+          <NameClaimModal
+            name={this.props.domain.name}
+            onClose={() => this.setState({ isShowingClaimModal: false })}
+          />
+        )}
+        {this.renderContent()}
+        <div className="domains__action">
+          {this.renderAuctionRight()}
+        </div>
+      </div>
+    );
+  }
+
+  renderAuctionRight = () => {
+    const {domain} = this.props;
+
+    if (isReserved(domain) || isLockedUp(domain)) {
+      return <BidActionPanel domain={domain} />;
+    }
+
+    if (this.isOwned()) {
+      return <BidActionPanel domain={domain} />;
+    }
+
+    if (isClosed(domain)) {
+      return <BidActionPanel domain={domain} />;
+    }
+
+    if (isOpening(domain) || isBidding(domain) || isReveal(domain)) {
+      return <BidActionPanel domain={domain} />;
+    }
+
+    if (isAvailable(domain)) {
+      return <BidActionPanel domain={domain} />;
+    }
+
+    return null;
+  };
+
+  renderContent() {
+    const domainName = this.getDomain();
+
+    const viewOnExplorer = () => {
+      shell.openExternal(this.props.explorer.name.replace('%s', this.props.domain.name))
+    }
+
+    return (
+      <React.Fragment>
+        <div className="domains__content">
+          <div className="domains__content__title">
+            {formatName(domainName)}
+            <div
+              className="domains__content__title__explorer-open-icon"
+              onClick={viewOnExplorer} />
+          </div>
+          {(this.props.pendingTransactionsWarning || this.state.pendingMetadataWarning) && (
+            <Alert
+              type="warning"
+              message={this.context.t('pendingAuctionMetadataWarning')}
+              className="domains__content__pending-warning"
+            />
+          )}
+          <div className="domains__content__info-wrapper">
+            <div className="domains__content__info-panel">
+              {this.renderAuctionDetails()}
+            </div>
+            {this.maybeRenderCollapsibles()}
+          </div>
+        </div>
+      </React.Fragment>
+    );
+  }
+
+  renderAuctionDetails() {
+    const {t} = this.context;
+
+    if (this.state.isLoading) {
+      return t('loading');
+    }
+
+    if (this.state.loadError || !this.props.domain) {
+      return (
+        <div className="domains__content__load-error" role="alert">
+          <div>{this.state.loadError || t('auctionLoadFailedErr')}</div>
+          <button type="button" onClick={this.loadName}>{t('retry')}</button>
+        </div>
+      );
+    }
+
+    const domain = this.props.domain;
+    const stats = domain.info && domain.info.stats || {};
+
+    if (isOpening(domain) || isBidding(domain) || isReveal(domain)) {
+      return <AuctionGraph />;
+    }
+
+    return (
+      <div className={this.getContentClassName()}>
+        {this.renderStatusInfo()}
+        {this.maybeRenderDateBlock(() => isClosed(domain), t('auctionRenewStarts'), stats.renewalPeriodStart, stats.daysUntilExpire)}
+        {this.maybeRenderDateBlock(() => isClosed(domain), t('auctionRenewClose'), stats.renewalPeriodEnd, stats.daysUntilExpire)}
+      </div>
+    );
+  }
+
+  maybeRenderCollapsibles() {
+    const {t} = this.context;
+    const domain = this.props.domain || {};
+    const {bids = [], reveals = [], pendingOperationMeta = {bids: []}} = domain;
+    const bidsIncludingPending = [...pendingOperationMeta.bids, ...bids];
+
+    const bidsOrReveals = bidsIncludingPending.length ? bidsIncludingPending : reveals;
+    const pillContent = bidsOrReveals.length === 1
+      ? t('auctionBidCount', String(bidsOrReveals.length))
+      : t('auctionBidsCount', String(bidsOrReveals.length));
+
+    if (isAvailable(domain) || isOpening(domain) || isBidding(domain) || isReveal(domain) || isClosed(domain)) {
+      return (
+        <React.Fragment>
+
+          <Collapsible className="domains__content__info-panel" title={t('auctionBidsTitle')} pillContent={pillContent}>
+            {
+              domain.bidHistoryLoading
+                ? t('auctionLoadingBidHistory')
+                : domain.bidHistoryError
+                  ? (
+                    <div className="domains__content__load-error" role="alert">
+                      <div>{domain.bidHistoryError}</div>
+                      <button type="button" onClick={this.loadName}>{t('auctionRetryBidHistory')}</button>
+                    </div>
+                  )
+                  : this.props.domain
+                    ? <BidHistory bids={bidsIncludingPending} reveals={reveals} />
+                    : t('loading')
+            }
+          </Collapsible>
+
+          {!isClosed(domain) ?
+            <Collapsible className="domains__content__info-panel" title={t('auctionVickreyTitle')} defaultCollapsed>
+              <VickreyProcess />
+            </Collapsible> : null
+          }
+
+          {!isAvailable(domain) && domain.info ?
+            <Collapsible className="domains__content__info-panel" title={t('records')}>
+              <Records
+                name={domain.name}
+                transferring={!!domain.info && domain.info.transfer !== 0}
+              />
+            </Collapsible> : null
+          }
+
+        </React.Fragment>
+      );
+    } else {
+      return null;
+    }
+
+  }
+
+  getContentClassName() {
+    const {domain} = this.props;
+    const className = 'domains__content__info-panel__content';
+
+    return cn(className, {
+      [className + '--available']: isAvailable(domain),
+      [className + '--reserved']: isReserved(domain),
+      [className + '--closed']: isClosed(domain),
+    });
+  }
+
+  renderDetailBlock(title, content, description) {
+    const className = 'domains__content__auction-detail';
+    return (
+      <div className={className}>
+        <div className={`${className}__label`}>{title}:</div>
+        <div className={`${className}__status`}>{content?.toLowerCase?.()}</div>
+        <div className={`${className}__description`}>{description}</div>
+      </div>
+    );
+  }
+
+  renderDateBlock(title, height, adjust) {
+    return this.renderDetailBlock(
+      title,
+      <Blocktime
+        height={height}
+        adjust={d => moment(d).add(adjust, 'h')}
+      />,
+      this.context.t('auctionBlockHeight', String(height)),
+    );
+  }
+
+  maybeRenderDateBlock(condition, title, height, adjust) {
+    if (!condition()) {
+      return null;
+    }
+
+    return this.renderDateBlock(title, height, adjust);
+  }
+
+  renderStatusInfo() {
+    const {domain} = this.props;
+    const {t} = this.context;
+    let status = '';
+    let description = '';
+
+    if (isReserved(domain)) {
+      status = t('reserved');
+      description = (
+        <button
+          onClick={() => this.setState({ isShowingClaimModal: true })}
+        >
+          {t('reservedCTAText')}
+        </button>
+      );
+    } else if (isLockedUp(domain)) {
+      status = t('locked');
+    } else if (isOpening(domain)) {
+      status = t('opening');
+      description = t('biddingSoon');
+    } else if (isBidding(domain)) {
+      const bids = domain.bids || [];
+      status = t('available');
+      description = `${t('biddingNow')} (${bids.length} ${t('bids')})`;
+    } else if (isComingSoon(domain, this.props.chain.height)) {
+      status = t('comingSoon');
+      description = (
+        <span>
+          {t('available')} <Blocktime height={domain.start.start} format="ll" />
+        </span>
+      );
+    } else if (isAvailable(domain)) {
+      status = t('available');
+      description = t('noBids');
+    } else if (isClosed(domain)) {
+      status = t('sold');
+      // this.setState({ showCollapsibles: false })
+    } else if (isReveal(domain)) {
+      status = t('revealing');
+    } else {
+      status = t('unavailable');
+    }
+
+    return this.renderDetailBlock(t('status'), status, description);
+  }
+}

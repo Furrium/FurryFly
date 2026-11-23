@@ -1,0 +1,491 @@
+import React, {Component} from 'react';
+import {connect} from 'react-redux';
+import {withRouter} from 'react-router-dom';
+import PropTypes from 'prop-types';
+import moment from 'moment';
+import * as networks from 'hsd/lib/protocol/networks';
+import * as myDomainsActions from '../../ducks/myDomains';
+import {formatName} from '../../utils/nameHelpers';
+import {HeaderItem, HeaderRow, Table, TableItem, TableRow} from '../../components/Table';
+import Blocktime from '../../components/Blocktime';
+import DocsHelp from '../../components/DocsHelp';
+import {I18nContext} from '../../utils/i18n';
+import {DEFAULT_SHAKEDEX_CHANNEL_HOST} from '../../constants/shakedexChannels';
+import {clientStub as sClientStub} from '../../background/shakedex/client';
+import './expiring.scss';
+const BRAND = require('../../constants/branding');
+
+const shakedex = sClientStub(() => require('electron').ipcRenderer);
+const AVERAGE_BLOCK_TIME = 10 * 60 * 1000;
+const SOON_BLOCKS = 30 * 24 * 6;
+
+class Expiring extends Component {
+  static propTypes = {
+    getMyNames: PropTypes.func.isRequired,
+    height: PropTypes.number,
+    history: PropTypes.object.isRequired,
+    isFetching: PropTypes.bool.isRequired,
+    names: PropTypes.object.isRequired,
+    namesList: PropTypes.array.isRequired,
+    network: PropTypes.string.isRequired,
+    spv: PropTypes.bool.isRequired,
+  };
+
+  static contextType = I18nContext;
+
+  state = {
+    channelExpiringNames: [],
+    channelExpiringError: '',
+    channelExpiringLoading: false,
+    channelExpiringScope: '',
+    channelExpiringCheckedAt: null,
+    communityExpiringNames: [],
+    communityExpiringError: '',
+    communityExpiringLoading: false,
+    communityExpiringScope: '',
+    communityExpiringCheckedAt: null,
+    globalExpiringNames: [],
+    globalExpiringError: '',
+    globalExpiringLoading: false,
+    globalExpiringScope: '',
+    globalExpiringCheckedAt: null,
+    globalExpiringIndexer: null,
+    recentlyExpiredNames: [],
+    recentlyExpiredError: '',
+    recentlyExpiredLoading: false,
+    recentlyExpiredScope: '',
+    recentlyExpiredCheckedAt: null,
+    recentlyExpiredIndexer: null,
+    channelHost: DEFAULT_SHAKEDEX_CHANNEL_HOST,
+  };
+
+  componentDidMount() {
+    this.props.getMyNames();
+    this.fetchChannelExpiringNames();
+  }
+
+  componentWillUnmount() {
+    this.unmounted = true;
+  }
+
+  async fetchChannelExpiringNames() {
+    this.setState({
+      channelExpiringLoading: true,
+      channelExpiringError: '',
+      communityExpiringLoading: true,
+      communityExpiringError: '',
+      globalExpiringLoading: true,
+      globalExpiringError: '',
+      recentlyExpiredLoading: true,
+      recentlyExpiredError: '',
+    });
+
+    try {
+      const [channelData, communityData, globalData, recentlyExpiredData] = await Promise.all([
+        shakedex.getChannelExpiringNames(100),
+        shakedex.getCommunityExpiringNames(100),
+        shakedex.getGlobalExpiringNames(100),
+        shakedex.getRecentlyExpiredNames(100),
+      ]);
+
+      if (this.unmounted) {
+        return;
+      }
+
+      this.setState({
+        channelHost: channelData.host || communityData.host || globalData.host || recentlyExpiredData.host || DEFAULT_SHAKEDEX_CHANNEL_HOST,
+        channelExpiringNames: channelData.names || [],
+        channelExpiringScope: channelData.scope || 'channel-observed',
+        channelExpiringCheckedAt: Date.now(),
+        channelExpiringLoading: false,
+        channelExpiringError: channelData.error || '',
+        communityExpiringNames: communityData.names || [],
+        communityExpiringScope: communityData.scope || 'community-observed',
+        communityExpiringCheckedAt: Date.now(),
+        communityExpiringLoading: false,
+        communityExpiringError: communityData.error || '',
+        globalExpiringNames: globalData.names || [],
+        globalExpiringScope: globalData.scope || 'global',
+        globalExpiringCheckedAt: Date.now(),
+        globalExpiringLoading: false,
+        globalExpiringError: globalData.error || '',
+        globalExpiringIndexer: globalData.indexer || null,
+        recentlyExpiredNames: recentlyExpiredData.names || [],
+        recentlyExpiredScope: recentlyExpiredData.status || recentlyExpiredData.scope || 'expired',
+        recentlyExpiredCheckedAt: Date.now(),
+        recentlyExpiredLoading: false,
+        recentlyExpiredError: recentlyExpiredData.error || '',
+        recentlyExpiredIndexer: recentlyExpiredData.indexer || null,
+      });
+    } catch (e) {
+      if (this.unmounted) {
+        return;
+      }
+
+      this.setState({
+        channelExpiringError: e.message || this.context.t('expiringErrChannel'),
+        channelExpiringLoading: false,
+        communityExpiringError: e.message || this.context.t('expiringErrCommunity'),
+        communityExpiringLoading: false,
+        globalExpiringError: e.message || this.context.t('expiringErrGlobal'),
+        globalExpiringLoading: false,
+        recentlyExpiredError: e.message || this.context.t('expiringErrRecent'),
+        recentlyExpiredLoading: false,
+      });
+    }
+  }
+
+  renderEmptyRow(message) {
+    return (
+      <TableRow className="table__empty-row">
+        <TableItem className="expiring-page__empty" grow={1}>
+          {message}
+        </TableItem>
+      </TableRow>
+    );
+  }
+
+  getExpirationHeight(name) {
+    const domain = this.props.names[name];
+    const network = networks[this.props.network];
+
+    if (!domain?.renewal || !network?.names?.renewalWindow) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+
+    return domain.renewal + network.names.renewalWindow;
+  }
+
+  getExpirationRows() {
+    return this.props.namesList
+      .map(name => {
+        const expirationHeight = this.getExpirationHeight(name);
+        const blocksRemaining = expirationHeight - this.props.height;
+
+        return {
+          name,
+          expirationHeight,
+          blocksRemaining,
+        };
+      })
+      .filter(row => row.expirationHeight !== Number.MAX_SAFE_INTEGER)
+      .sort((a, b) => {
+        const expirationCompare = a.expirationHeight - b.expirationHeight;
+        if (expirationCompare !== 0) {
+          return expirationCompare;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  }
+
+  getStatus(blocksRemaining) {
+    const {t} = this.context;
+
+    if (blocksRemaining <= 0) {
+      return {
+        className: 'expiring-page__status--expired',
+        label: t('expirationStatusExpired'),
+      };
+    }
+
+    if (blocksRemaining <= SOON_BLOCKS) {
+      return {
+        className: 'expiring-page__status--soon',
+        label: t('expirationStatusSoon'),
+      };
+    }
+
+    return {
+      className: 'expiring-page__status--later',
+      label: t('expirationStatusLater'),
+    };
+  }
+
+  renderRows(rows) {
+    const {height, history} = this.props;
+    const {t} = this.context;
+
+    if (!rows.length) {
+      return this.renderEmptyRow(t('expiringEmpty'));
+    }
+
+    return rows.map(({name, expirationHeight, blocksRemaining}) => {
+      const status = this.getStatus(blocksRemaining);
+      const estimatedDate = height && expirationHeight
+        ? moment().add(blocksRemaining * AVERAGE_BLOCK_TIME).format('YYYY-MM-DD')
+        : '';
+
+      return (
+        <TableRow
+          key={name}
+          onClick={() => history.push(`/domain_manager/${name}`)}
+        >
+          <TableItem className="expiring-page__domain-cell" width="16rem" grow={0} shrink={0}>{formatName(name)}</TableItem>
+          <TableItem className="expiring-page__date-cell" width="10rem" grow={0} shrink={0}>
+            <Blocktime height={expirationHeight} format="ll" fromNow />
+          </TableItem>
+          <TableItem className="expiring-page__date-cell" width="12rem" grow={0} shrink={0}>{estimatedDate}</TableItem>
+          <TableItem className="expiring-page__blocks-cell" width="11rem" grow={0} shrink={0}>{blocksRemaining}</TableItem>
+          <TableItem className="expiring-page__status-cell" width="8rem" grow={0} shrink={0}>
+            <span className={`expiring-page__status ${status.className}`}>
+              {status.label}
+            </span>
+          </TableItem>
+        </TableRow>
+      );
+    });
+  }
+
+  getObservedStatus(row) {
+    if (!row.found || row.blocksUntilExpire === null || row.blocksUntilExpire === undefined) {
+      return {
+        className: 'expiring-page__status--unknown',
+        label: row.error ? this.context.t('expiringNotFoundYet') : this.context.t('expiringPending'),
+      };
+    }
+
+    return this.getStatus(row.blocksUntilExpire);
+  }
+
+  renderObservedRows({
+    rows,
+    loading,
+    error,
+    loadingMessage,
+    emptyMessage,
+    includeUnresolved = false,
+    sortDescending = false,
+  }) {
+    if (loading) {
+      return this.renderEmptyRow(loadingMessage);
+    }
+
+    if (error) {
+      return this.renderEmptyRow(error);
+    }
+
+    const visibleRows = rows
+      .filter(row => includeUnresolved || (row.found && row.blocksUntilExpire !== null && row.blocksUntilExpire !== undefined))
+      .sort((a, b) => {
+        const aBlocks = a.blocksUntilExpire ?? Number.MAX_SAFE_INTEGER;
+        const bBlocks = b.blocksUntilExpire ?? Number.MAX_SAFE_INTEGER;
+        const expirationCompare = sortDescending ? bBlocks - aBlocks : aBlocks - bBlocks;
+        if (expirationCompare !== 0) {
+          return expirationCompare;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+    if (!visibleRows.length) {
+      return this.renderEmptyRow(emptyMessage);
+    }
+
+    return visibleRows.map(row => {
+      const status = this.getObservedStatus(row);
+      const estimatedDate = row.blocksUntilExpire === null || row.blocksUntilExpire === undefined
+        ? '-'
+        : typeof row.daysUntilExpire === 'number'
+        ? moment().add(row.daysUntilExpire, 'days').format('YYYY-MM-DD')
+        : moment().add(row.blocksUntilExpire * AVERAGE_BLOCK_TIME).format('YYYY-MM-DD');
+
+      return (
+        <TableRow key={row.name}>
+          <TableItem className="expiring-page__domain-cell" width="16rem" grow={0} shrink={0}>{formatName(row.name)}</TableItem>
+          <TableItem className="expiring-page__date-cell" width="10rem" grow={0} shrink={0}>{row.expirationHeight || '-'}</TableItem>
+          <TableItem className="expiring-page__date-cell" width="12rem" grow={0} shrink={0}>{estimatedDate}</TableItem>
+          <TableItem className="expiring-page__blocks-cell" width="11rem" grow={0} shrink={0}>{row.blocksUntilExpire ?? '-'}</TableItem>
+          <TableItem className="expiring-page__status-cell" width="8rem" grow={0} shrink={0}>
+            <span className={`expiring-page__status ${status.className}`}>
+              {status.label}
+            </span>
+          </TableItem>
+        </TableRow>
+      );
+    });
+  }
+
+  render() {
+    const rows = this.getExpirationRows();
+    const {isFetching, spv} = this.props;
+    const {t} = this.context;
+
+    return (
+      <div className="expiring-page">
+        <div className="expiring-page__intro">
+          <h2>{t('headingExpiring')}</h2>
+          <p>{t('expiringIntro')}</p>
+          <p className="expiring-page__mode-note">
+            {spv ? t('expiringSpvNote') : t('expiringFullNodeNote')}
+          </p>
+        </div>
+        <DocsHelp
+          title={t('expiringTitle')}
+          href={`${BRAND.siteUrl}/docs/expiring-names`}
+        >
+          {t('expiringWalletFocusHint')}
+        </DocsHelp>
+        <div className="expiring-page__section-header">
+          <div>
+            <h3>{t('expiringYourNames')}</h3>
+            <p>{t('expiringYourNamesHelp')}</p>
+          </div>
+        </div>
+        <Table className="expiring-page__table">
+          <HeaderRow>
+            <HeaderItem width="16rem" grow={0} shrink={0}>{t('domain')}</HeaderItem>
+            <HeaderItem width="10rem" grow={0} shrink={0}>{t('expiresOn')}</HeaderItem>
+            <HeaderItem width="12rem" grow={0} shrink={0}>{t('estimatedExpirationDate')}</HeaderItem>
+            <HeaderItem width="11rem" grow={0} shrink={0}>{t('blocksRemaining')}</HeaderItem>
+            <HeaderItem width="8rem" grow={0} shrink={0}>{t('expirationStatus')}</HeaderItem>
+          </HeaderRow>
+          {isFetching ? (
+            this.renderEmptyRow(t('loadingNDomains', rows.length))
+          ) : this.renderRows(rows)}
+        </Table>
+        <div className="expiring-page__section-header expiring-page__section-header--spaced">
+          <div>
+            <h3>{t('expiringChannelNames')}</h3>
+            <p>
+              {t('expiringChannelObservedHint', this.state.channelHost)}
+            </p>
+            {this.state.channelExpiringCheckedAt && (
+              <p className="expiring-page__checked-at">
+                Checked {moment(this.state.channelExpiringCheckedAt).format('HH:mm:ss')} · {this.state.channelExpiringScope}
+              </p>
+            )}
+          </div>
+          <button
+            className="expiring-page__refresh"
+            disabled={this.state.channelExpiringLoading}
+            onClick={() => this.fetchChannelExpiringNames()}
+          >
+            Refresh
+          </button>
+        </div>
+        <Table className="expiring-page__table">
+          <HeaderRow>
+            <HeaderItem width="16rem" grow={0} shrink={0}>{t('domain')}</HeaderItem>
+            <HeaderItem width="10rem" grow={0} shrink={0}>{t('expiresOn')}</HeaderItem>
+            <HeaderItem width="12rem" grow={0} shrink={0}>{t('estimatedExpirationDate')}</HeaderItem>
+            <HeaderItem width="11rem" grow={0} shrink={0}>{t('blocksRemaining')}</HeaderItem>
+            <HeaderItem width="8rem" grow={0} shrink={0}>{t('expirationStatus')}</HeaderItem>
+          </HeaderRow>
+          {this.renderObservedRows({
+            rows: this.state.channelExpiringNames,
+            loading: this.state.channelExpiringLoading,
+            error: this.state.channelExpiringError,
+            loadingMessage: t('expiringLoadingChannel'),
+            emptyMessage: t('expiringEmptyChannel'),
+          })}
+        </Table>
+        <div className="expiring-page__section-header expiring-page__section-header--spaced">
+          <div>
+            <h3>{t('expiringGlobalNames')}</h3>
+            <p>
+              {t('expiringGlobalIndexHint')}
+            </p>
+            {this.state.globalExpiringCheckedAt && (
+              <p className="expiring-page__checked-at">
+                Checked {moment(this.state.globalExpiringCheckedAt).format('HH:mm:ss')} · {this.state.globalExpiringScope}
+                {this.state.globalExpiringIndexer?.status ? ` · ${this.state.globalExpiringIndexer.status}` : ''}
+              </p>
+            )}
+          </div>
+        </div>
+        <Table className="expiring-page__table">
+          <HeaderRow>
+            <HeaderItem width="16rem" grow={0} shrink={0}>{t('domain')}</HeaderItem>
+            <HeaderItem width="10rem" grow={0} shrink={0}>{t('expiresOn')}</HeaderItem>
+            <HeaderItem width="12rem" grow={0} shrink={0}>{t('estimatedExpirationDate')}</HeaderItem>
+            <HeaderItem width="11rem" grow={0} shrink={0}>{t('blocksRemaining')}</HeaderItem>
+            <HeaderItem width="8rem" grow={0} shrink={0}>{t('expirationStatus')}</HeaderItem>
+          </HeaderRow>
+          {this.renderObservedRows({
+            rows: this.state.globalExpiringNames,
+            loading: this.state.globalExpiringLoading,
+            error: this.state.globalExpiringError,
+            loadingMessage: t('expiringLoadingGlobal'),
+            emptyMessage: t('expiringEmptyGlobal'),
+          })}
+        </Table>
+        <div className="expiring-page__section-header expiring-page__section-header--spaced">
+          <div>
+            <h3>{t('expiringRecentNames')}</h3>
+            <p>
+              {t('expiringRecentHint')}
+            </p>
+            {this.state.recentlyExpiredCheckedAt && (
+              <p className="expiring-page__checked-at">
+                Checked {moment(this.state.recentlyExpiredCheckedAt).format('HH:mm:ss')} · {this.state.recentlyExpiredScope}
+                {this.state.recentlyExpiredIndexer?.status ? ` · ${this.state.recentlyExpiredIndexer.status}` : ''}
+              </p>
+            )}
+          </div>
+        </div>
+        <Table className="expiring-page__table">
+          <HeaderRow>
+            <HeaderItem width="16rem" grow={0} shrink={0}>{t('domain')}</HeaderItem>
+            <HeaderItem width="10rem" grow={0} shrink={0}>{t('expiresOn')}</HeaderItem>
+            <HeaderItem width="12rem" grow={0} shrink={0}>{t('estimatedExpirationDate')}</HeaderItem>
+            <HeaderItem width="11rem" grow={0} shrink={0}>{t('blocksRemaining')}</HeaderItem>
+            <HeaderItem width="8rem" grow={0} shrink={0}>{t('expirationStatus')}</HeaderItem>
+          </HeaderRow>
+          {this.renderObservedRows({
+            rows: this.state.recentlyExpiredNames,
+            loading: this.state.recentlyExpiredLoading,
+            error: this.state.recentlyExpiredError,
+            loadingMessage: t('expiringLoadingRecent'),
+            emptyMessage: t('expiringEmptyRecent'),
+            sortDescending: true,
+          })}
+        </Table>
+        <div className="expiring-page__section-header expiring-page__section-header--spaced">
+          <div>
+            <h3>{t('expiringCommunityNames')}</h3>
+            <p>
+              {t('expiringCommunityHint')}
+            </p>
+            {this.state.communityExpiringCheckedAt && (
+              <p className="expiring-page__checked-at">
+                Checked {moment(this.state.communityExpiringCheckedAt).format('HH:mm:ss')} · {this.state.communityExpiringScope}
+              </p>
+            )}
+          </div>
+        </div>
+        <Table className="expiring-page__table">
+          <HeaderRow>
+            <HeaderItem width="16rem" grow={0} shrink={0}>{t('domain')}</HeaderItem>
+            <HeaderItem width="10rem" grow={0} shrink={0}>{t('expiresOn')}</HeaderItem>
+            <HeaderItem width="12rem" grow={0} shrink={0}>{t('estimatedExpirationDate')}</HeaderItem>
+            <HeaderItem width="11rem" grow={0} shrink={0}>{t('blocksRemaining')}</HeaderItem>
+            <HeaderItem width="8rem" grow={0} shrink={0}>{t('expirationStatus')}</HeaderItem>
+          </HeaderRow>
+          {this.renderObservedRows({
+            rows: this.state.communityExpiringNames,
+            loading: this.state.communityExpiringLoading,
+            error: this.state.communityExpiringError,
+            loadingMessage: t('expiringLoadingCommunity'),
+            emptyMessage: t('expiringEmptyCommunity'),
+            includeUnresolved: true,
+          })}
+        </Table>
+      </div>
+    );
+  }
+}
+
+export default withRouter(
+  connect(
+    state => ({
+      names: state.myDomains.names,
+      isFetching: state.myDomains.isFetching,
+      namesList: Object.keys(state.myDomains.names),
+      height: state.node.chain.height,
+      network: state.wallet.network,
+      spv: state.node.spv,
+    }),
+    dispatch => ({
+      getMyNames: () => dispatch(myDomainsActions.getMyNames()),
+    }),
+  )(Expiring),
+);

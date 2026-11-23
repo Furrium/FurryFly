@@ -1,0 +1,23 @@
+@import '../../variables';
+
+.copy-btn {
+  @extend %row-nowrap;
+
+  position: relative;
+  align-items: center;
+  border: none;
+  outline: none;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  background-color: rgba($azure-blue, 0.15);
+  color: $azure-blue;
+  font-weight: 700;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 200ms ease-in-out;
+
+  &:active {
+    background-color: rgba($azure-blue, 0.17);
+  }
+}

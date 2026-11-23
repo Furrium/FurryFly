@@ -1,0 +1,67 @@
+@import '../../../variables';
+@import '../wizard';
+
+.import-enter {
+  &__inputs-container {
+    & > div {
+      margin-top: 1rem;
+    }
+  }
+
+  &__error {
+    color: $orange-red;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Token-based restyle for the legacy import screens, which use flat class names.
+// Appended rather than rewritten so their layout rules stay intact.
+// ---------------------------------------------------------------------------
+$import-roots: '.import-enter', '.import-warning';
+
+@each $root in $import-roots {
+  #{$root} {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 34rem;
+    margin: 0 auto;
+    color: var(--fns-text);
+  }
+
+  #{$root} .subheader_text,
+  #{$root} .import-header-text,
+  #{$root} .import_text_description {
+    color: var(--fns-text);
+  }
+
+  #{$root} .import_enter_text_description,
+  #{$root} .import_text_purchase_description,
+  #{$root} .import_restore_scope_note,
+  #{$root} .import-learn-more-text {
+    color: var(--fns-text-secondary);
+  }
+
+  #{$root} .import_enter_warning_text,
+  #{$root} .import_warning_text {
+    color: var(--fns-warning);
+  }
+
+  #{$root} .import_enter_textarea,
+  #{$root} .import_password_input,
+  #{$root} .import_user_input,
+  #{$root} .terms__input {
+    @include wizard-field;
+    margin-bottom: 0.75rem;
+  }
+
+  #{$root} .import_enter_cta_button,
+  #{$root} .import_cta_button {
+    @include wizard-cta;
+  }
+
+  #{$root} .import_checkbox_text {
+    color: var(--fns-text-secondary);
+  }
+}

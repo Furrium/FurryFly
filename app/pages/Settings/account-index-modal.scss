@@ -1,0 +1,40 @@
+@import '../../variables';
+@import '../../tokens';
+@import '../../styles/controls';
+
+.account-index-modal__instructions {
+  margin-bottom: 1.5rem;
+  color: var(--fns-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.account-index-modal__path {
+  margin-bottom: 1.5rem;
+  color: var(--fns-text);
+  font-size: 1rem;
+  font-weight: var(--fns-weight-medium);
+}
+
+.account-index-modal__path-entry {
+  width: 7rem;
+  margin-left: 0.375rem;
+  padding: 0.5rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-sm);
+  background: var(--fns-surface-raised);
+  color: var(--fns-text);
+  font: inherit;
+  font-size: 0.9375rem;
+  outline: 0;
+
+  &:focus {
+    border-color: var(--fns-brand);
+  }
+}
+
+.account-index-modal__submit {
+  @include fns-button-primary;
+
+  width: 100%;
+}

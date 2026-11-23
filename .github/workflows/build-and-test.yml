@@ -1,0 +1,55 @@
+# This workflow does a clean install of node dependencies, builds the source
+# code and runs tests. Windows only: this fork ships a Windows target.
+# For more information see:
+# https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Build and Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-2022
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm packages
+        run: npm ci
+        env:
+          npm_config_with_gmp: "false"
+          GYP_DEFINES: "with_gmp=false"
+
+      - name: Force goosig mini-gmp
+        run: node scripts/force-goosig-mini-gmp.js
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate compiled application modules
+        run: node scripts/validate-dist.js
+
+      - name: Validate maintained locales
+        run: |
+          npm run check-locale -- zh-CN
+          npm run check-locale -- ru-RU
+          npm run check-locale -- th-TH
+
+      - name: Test locale validator
+        run: node --test scripts/check-locale.test.js
+
+      - name: Test
+        run: npm test

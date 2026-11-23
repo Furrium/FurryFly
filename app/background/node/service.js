@@ -1,0 +1,1014 @@
+import {createSpvHelperClient} from './spvHelperRequest';
+import pify from '../../utils/pify';
+import { app } from 'electron';
+import { VALID_NETWORKS } from '../../constants/networks';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
+import EventEmitter from 'events';
+import throttle from 'lodash.throttle';
+import { NodeClient } from 'hsd/lib/client';
+import { BigNumber } from 'bignumber.js';
+import { ConnectionTypes, getConnection, getCustomRPC } from '../connections/service';
+import FullNode from 'hsd/lib/node/fullnode';
+import SPVNode from 'hsd/lib/node/spvnode';
+import plugin from 'hsd/lib/wallet/plugin';
+import {installLocalRescan} from '../wallet/localRescan';
+import {installHsdWebSocketUpgradePolicies} from './websocketPolicy';
+import { prefixHash } from '../../db/names';
+import { del, get, put } from '../db/service';
+import {dispatchToMainWindow} from "../../mainWindow";
+import {
+  DEFAULT_SPV_HELPER_API_BASE_URL,
+  normalizeSpvHelperApiBaseUrl,
+  resolveStoredSpvHelperApiBaseUrl,
+} from './spvHelper';
+import {
+  SET_NODE_API,
+  SET_CUSTOM_RPC_STATUS,
+  START,
+  SET_FEE_INFO,
+  SET_NODE_INFO,
+  SET_SPV_MODE,
+  START_NODE_STATUS_CHANGE,
+  END_NODE_STATUS_CHANGE,
+  COMPACTING_TREE,
+} from "../../ducks/nodeReducer";
+import pkg from '../../../package.json';
+import BRAND from '../../constants/branding';
+import {reviewText} from '../../utils/reviewText';
+import {storageHealth} from '../storage/service';
+const TX = require('hsd/lib/primitives/tx');
+
+const Network = require('hsd/lib/protocol/network');
+const {
+  assertAcceptanceHsdDirectory,
+  constrainHsdOptions,
+} = require('../packagedAcceptance/policy');
+
+const MIN_FEE = new BigNumber(0.01);
+const DEFAULT_BLOCK_TIME = 10 * 60 * 1000;
+const HSD_PREFIX_DIR_KEY = 'hsdPrefixDir';
+const WALLET_API_KEY = 'walletApiKey';
+const NODE_API_KEY = 'nodeApiKey';
+const NODE_NO_DNS = 'nodeNoDns1';
+const NODE_SYNC_ENABLED = 'nodeSyncEnabled1';
+const SPV_MODE = 'nodeSpvMode';
+const SPV_HELPER_API_BASE_URL = 'nodeSpvHelperApiBaseUrl';
+const TRANSACTION_TIMEOUT_MS = 120000;
+const IS_PACKAGED_ACCEPTANCE = process.env.BOB_PACKAGED_ACCEPTANCE_TEST === 'true';
+const ACCEPTANCE_NODE_MODE = process.env.BOB_ACCEPTANCE_NODE_MODE || 'spv';
+
+export class NodeService extends EventEmitter {
+  constructor({
+    connectionProvider = getConnection,
+    customRPCProvider = getCustomRPC,
+    nodeClientClass = NodeClient,
+  } = {}) {
+    super();
+
+    this.height = 0;
+    this.hsd = null;
+    this.client = null;
+    // Peer discovery is opt-in. The node always runs because the wallet database
+    // lives inside it, but it is only allowed to dial peers once the user asks.
+    this.syncEnabled = false;
+    this.transactionClient = null;
+    this.connectionType = null;
+    this.connectionProvider = connectionProvider;
+    this.customRPCProvider = customRPCProvider;
+    this.nodeClientClass = nodeClientClass;
+  }
+
+  async getAPIKey() {
+    const apiKey = await get(NODE_API_KEY);
+
+    if (apiKey) return apiKey;
+
+    const newKey = crypto.randomBytes(20).toString('hex');
+    await put(NODE_API_KEY, newKey);
+    return newKey;
+  }
+
+  async getWalletAPIKey(nodeApiKey) {
+    const apiKey = await get(WALLET_API_KEY);
+    if (apiKey) return apiKey;
+
+    // Fallback to node's api key
+    await put(WALLET_API_KEY, nodeApiKey);
+    return nodeApiKey;
+  }
+
+  async getNoDns() {
+    if (IS_PACKAGED_ACCEPTANCE) return true;
+    const noDns = await get(NODE_NO_DNS);
+    if (noDns !== null) {
+      return noDns === '1';
+    }
+
+    return false;
+  }
+
+  async getSpvMode() {
+    if (IS_PACKAGED_ACCEPTANCE) return ACCEPTANCE_NODE_MODE === 'spv';
+    const spv = await get(SPV_MODE);
+    if (spv !== null) {
+      return spv === '1';
+    }
+
+    return true;
+  }
+
+  async getSpvHelperApiBaseUrl() {
+    const baseUrl = await get(SPV_HELPER_API_BASE_URL);
+    if (!baseUrl) {
+      return DEFAULT_SPV_HELPER_API_BASE_URL;
+    }
+
+    return resolveStoredSpvHelperApiBaseUrl(baseUrl);
+  }
+
+  async getSpvHelperApiSettings() {
+    const baseUrl = await this.getSpvHelperApiBaseUrl();
+    return {
+      baseUrl,
+      defaultBaseUrl: DEFAULT_SPV_HELPER_API_BASE_URL,
+      isDefault: baseUrl === DEFAULT_SPV_HELPER_API_BASE_URL,
+    };
+  }
+
+  async setSpvHelperApiBaseUrl(baseUrl) {
+    const normalizedBaseUrl = normalizeSpvHelperApiBaseUrl(baseUrl);
+    await put(SPV_HELPER_API_BASE_URL, normalizedBaseUrl);
+    return this.getSpvHelperApiSettings();
+  }
+
+  async resetSpvHelperApiBaseUrl() {
+    await del(SPV_HELPER_API_BASE_URL);
+    return this.getSpvHelperApiSettings();
+  }
+
+  async validateSpvHelperApiBaseUrl(baseUrl) {
+    const normalizedBaseUrl = normalizeSpvHelperApiBaseUrl(baseUrl);
+
+    try {
+      const res = await fetch(normalizedBaseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          method: 'getblockchaininfo',
+          params: [],
+        }),
+      });
+      const json = await res.json();
+
+      return {
+        ok: res.status === 200 && !json.error,
+        baseUrl: normalizedBaseUrl,
+        status: res.status,
+        height: json.result?.blocks || json.result?.chain?.height || json.result?.height || null,
+        error: json.error?.message || null,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        baseUrl: normalizedBaseUrl,
+        error: e.message,
+      };
+    }
+  }
+
+  async getDir() {
+    if (IS_PACKAGED_ACCEPTANCE) {
+      const userData = app.getPath('userData');
+      return assertAcceptanceHsdDirectory(
+        userData,
+        path.join(userData, 'acceptance-hsd-profile'),
+      );
+    }
+    const legacyDefault = path.join(app.getPath('userData'), 'hsd_data');
+    const hsdPrefixDir = await get(HSD_PREFIX_DIR_KEY);
+
+    // A stored path that merely equals the old computed default is not a choice
+    // the user made: earlier versions wrote it on first run. It must not count as
+    // a preference, or the branded default below would never take effect on an
+    // installation that has already started once.
+    if (hsdPrefixDir && path.resolve(hsdPrefixDir) !== path.resolve(legacyDefault)) {
+      return hsdPrefixDir;
+    }
+
+    // Resolved on every start rather than persisted, so a machine where the
+    // preferred drive is missing still falls back instead of pointing at nothing.
+    const preferred = BRAND.chainDir;
+    if (preferred) {
+      try {
+        fs.mkdirSync(preferred, {recursive: true});
+        return preferred;
+      } catch (error) {
+        console.error(
+          `[${BRAND.displayName}] Preferred chain directory unavailable: ${error.message}`,
+        );
+      }
+    }
+
+    await put(HSD_PREFIX_DIR_KEY, legacyDefault);
+    return legacyDefault;
+  }
+
+  async setNodeDir(dir) {
+    if (!fs.existsSync(dir)) {
+      throw new Error(`${dir} does not exist`);
+    }
+
+    await put(HSD_PREFIX_DIR_KEY, dir);
+  }
+
+  async setAPIKey(apiKey) {
+    await put(NODE_API_KEY, apiKey);
+    dispatchToMainWindow({
+      type: SET_NODE_API,
+      payload: apiKey,
+    });
+  }
+
+  async setSpvMode(spv) {
+    await put(SPV_MODE, !!spv ? '1' : '0');
+    dispatchToMainWindow({
+      type: SET_SPV_MODE,
+      payload: spv === true,
+    });
+  }
+
+  async setNoDns(noDns) {
+    await put(NODE_NO_DNS, noDns === true ? '1' : '0');
+  }
+
+  async configurePaths() {
+    const dir = await this.getDir();
+    if (!fs.existsSync(dir)) {
+      await pify(cb => fs.mkdir(dir, {recursive: true}, cb));
+    }
+  }
+
+  async start(networkName) {
+    await this.setNetworkAndNodeOptions(networkName);
+    const conn = await this.connectionProvider();
+
+    if (this.connectionType && this.connectionType !== conn.type) {
+      await this.stop();
+    }
+
+    switch (conn.type) {
+      case ConnectionTypes.P2P:
+        try {
+          await this.startNode();
+        } catch (error) {
+          if (error.code === 'EADDRINUSE') {
+            throw new Error(reviewText(null, 'nodeBindErr', error.address, String(error.port)));
+          } else {
+            throw error;
+          }
+        }
+        await this.setHSDLocalClient();
+        dispatchToMainWindow({
+          type: SET_CUSTOM_RPC_STATUS,
+          payload: false,
+        });
+        dispatchToMainWindow({
+          type: START,
+          payload: {
+            network: this.networkName,
+            apiKey: this.apiKey,
+            noDns: this.noDns,
+            nsPort: this.getNsPort(),
+            rsPort: this.getRsPort(),
+          },
+        });
+        this.connectionType = conn.type;
+        break;
+      case ConnectionTypes.Custom:
+        await this.setCustomRPCClient();
+        dispatchToMainWindow({
+          type: SET_CUSTOM_RPC_STATUS,
+          payload: true,
+        });
+        dispatchToMainWindow({
+          type: START,
+          payload: {
+            network: this.networkName,
+            apiKey: null,
+            noDns: true,
+            nsPort: this.getNsPort(),
+            rsPort: this.getRsPort(),
+          },
+        });
+        this.connectionType = conn.type;
+        break;
+      default:
+        throw new Error(reviewText(null, 'nodeUnknownConnectionTypeErr'));
+    }
+  }
+
+  async setNetworkAndNodeOptions(networkName) {
+    if (IS_PACKAGED_ACCEPTANCE && networkName !== 'regtest') {
+      throw new Error(reviewText(null, 'nodePackagedAcceptanceRegtestErr'));
+    }
+    if (!VALID_NETWORKS[networkName]) {
+      throw new Error(reviewText(null, 'nodeInvalidNetworkErr'));
+    }
+
+    const network = Network.get(networkName);
+
+    this.networkName = networkName;
+    this.network = network;
+    this.apiKey = await this.getAPIKey();
+    this.noDns = await this.getNoDns();
+    this.spv = await this.getSpvMode();
+    this.syncEnabled = await this.loadSyncEnabled();
+  }
+
+  getPortOffset() {
+    // A plain upstream build keeps hsd's defaults. A branded build runs in its
+    // own range so it can coexist with an installed Bob LearnHNS: main.js sets
+    // BOB_LEARNHNS_TEST on every fork build, and LearnHNS itself already sits at
+    // base+1000, so reusing +1000 here would collide with it.
+    if (process.env.BOB_LEARNHNS_TEST !== 'true') return 0;
+    return BRAND.nodePortOffset || 0;
+  }
+
+  getRpcPort(network = this.network) {
+    return network.rpcPort + this.getPortOffset();
+  }
+
+  getWalletPort(network = this.network) {
+    return network.walletPort + this.getPortOffset();
+  }
+
+  getNsPort() {
+    return 9891 + this.getPortOffset();
+  }
+
+  getRsPort() {
+    return 9892 + this.getPortOffset();
+  }
+
+  async startNode() {
+    if (this.hsd) {
+      // The app was restarted but the nodes are already running,
+      // just re-dispatch to redux store.
+      await this.refreshNodeInfo();
+      this.emit('start local');
+      return;
+    }
+
+    console.log(`Starting node on ${this.networkName} network.`);
+
+    const dir = await this.getDir();
+    const spv = await this.getSpvMode();
+    const walletApiKey = await this.getWalletAPIKey(this.apiKey);
+
+    const Node = spv ? SPVNode : FullNode;
+
+    const nodeOptions = constrainHsdOptions({
+      agent: this.getAgent(),
+      config: true,
+      argv: true,
+      env: true,
+      logFile: true,
+      logConsole: false,
+      logLevel: 'debug',
+      memory: false,
+      workers: false,
+      network: this.networkName,
+      loader: require,
+      prefix: dir,
+      indexAddress: true,
+      indexTX: true,
+      httpPort: this.getRpcPort(),
+      apiKey: this.apiKey,
+      walletApiKey: walletApiKey,
+      walletHttpPort: this.getWalletPort(),
+      cors: true,
+      rsPort: this.getRsPort(),
+      nsPort: this.getNsPort(),
+      noDns: this.noDns,
+      listen: this.networkName === 'regtest', // improves remote rpc dev/testing
+      chainMigrate: 3,
+      walletMigrate: 2,
+      walletIcannlockup: true,
+      maxOutbound: 4,
+      compactTreeOnInit: false,
+    }, IS_PACKAGED_ACCEPTANCE, dir);
+    this.hsd = new Node(nodeOptions);
+
+    // Three separate sources feed the pool's address list, and all three have to be
+    // cut for sync to actually be off:
+    //   1. network.seeds, copied in when the Pool is constructed;
+    //   2. a hardcoded list that hsd/lib/net/seeds injects from hostlist.open();
+    //   3. the host list hsd saved to disk on earlier runs, restored by loadFile() -
+    //      this is why clearing the seeds alone still dialled peers on relaunch.
+    // Nothing else about the node changes: its chain, HTTP API and the wallet
+    // plugin all open normally against whatever is already stored on disk.
+    if (!this.syncEnabled) {
+      const {pool} = this.hsd;
+      if (pool && pool.hosts) {
+        const {hosts} = pool;
+        pool.seeds = [];
+        // hostlist.open() calls initAdd() first, which unconditionally re-applies
+        // options.seeds - so clearing the live list alone is not enough, the
+        // source has to be emptied too or DNS seeds come back two minutes later.
+        if (hosts.options) {
+          hosts.options.seeds = [];
+          hosts.options.nodes = [];
+        }
+        hosts.setSeeds([]);
+        hosts.injectSeeds = () => {};
+        hosts.loadFile = async () => {};
+      }
+    }
+
+    this.hsd.use(plugin);
+    installHsdWebSocketUpgradePolicies(this.hsd);
+    installLocalRescan(this.hsd.get('walletdb').wdb, this.hsd);
+
+    const reportStorageError = error => {
+      if (!storageHealth.reportError(error, {source: 'hsd'})) {
+        console.error('hsd error', error);
+      }
+    };
+    this.hsd.on('error', reportStorageError);
+    if (this.hsd.chain && typeof this.hsd.chain.on === 'function') {
+      this.hsd.chain.on('error', reportStorageError);
+    }
+
+    this.hsd.on('tree compact start', () => {
+      dispatchToMainWindow({
+        type: COMPACTING_TREE,
+        payload: true,
+      });
+    });
+    this.hsd.on('tree compact end', () => {
+      dispatchToMainWindow({
+        type: COMPACTING_TREE,
+        payload: false,
+      });
+    });
+
+    this.hsd.on('connect', async () => this.refreshNodeInfo());
+
+    await this.hsd.ensure();
+    await this.hsd.open();
+    this.emit('start local', this.hsd.get('walletdb'), walletApiKey);
+    await this.hsd.connect();
+    await this.hsd.get('walletdb').wdb.resumeLocalSync?.();
+    await this.hsd.startSync();
+
+    const migrateFlag = `${this.networkName}-hsd-4.0.0-migrate${spv ? '-spv' : ''}`;
+
+    if (!(await get(migrateFlag))) {
+      await put(migrateFlag, true);
+    }
+  }
+
+  async setHSDLocalClient() {
+    if (this.transactionClient) {
+      const staleTransactionClient = this.transactionClient;
+      this.transactionClient = null;
+      await staleTransactionClient.close();
+    }
+
+    if (this.client) {
+      // The app was restarted but the nodes are already running,
+      // just re-dispatch to redux store.
+      return this.refreshNodeInfo();
+    }
+
+    this.client = new this.nodeClientClass({
+      network: this.network,
+      port: this.getRpcPort(),
+      apiKey: this.apiKey,
+    });
+
+    this.client.on('error', e => {
+      console.error('nodeclient error', e);
+    });
+
+    await this.client.open();
+    await this.refreshNodeInfo()
+  }
+
+  async setCustomRPCClient() {
+    if (this.client && this.transactionClient) {
+      // The app was restarted but the nodes are already running,
+      // just re-dispatch to redux store.
+      await this.refreshNodeInfo();
+      this.emit('start remote');
+      return;
+    }
+
+    if (this.client || this.transactionClient) {
+      await this.closeRPCClients();
+    }
+
+    this.client = await this.createCustomRPCClient();
+    this.transactionClient = await this.createCustomRPCClient(TRANSACTION_TIMEOUT_MS);
+
+    this.client.on('error', e => {
+      console.error('nodeclient error', e);
+    });
+    this.transactionClient.on('error', e => {
+      console.error('transaction nodeclient error', e);
+    });
+
+    try {
+      await this.client.open();
+      await this.transactionClient.open();
+    } catch (error) {
+      await this.closeRPCClients().catch(closeError => {
+        console.error('failed to close custom RPC clients', closeError);
+      });
+      throw error;
+    }
+    await this.refreshNodeInfo()
+    this.client.bind('block connect', async () => this.refreshNodeInfo());
+    this.emit('start remote', this.network);
+  }
+
+  async testCustomRPCClient(walletNetwork) {
+    try {
+      if(!walletNetwork)
+        throw new Error(reviewText(null, 'nodeWalletNetworkUnknownErr'));
+
+      const testClient = await this.createCustomRPCClient();
+      const info = await testClient.getInfo();
+
+      if (info.network !== walletNetwork)
+        throw new Error(reviewText(null, 'nodeNetworkMismatchErr'));
+
+      return [true, null];
+    } catch (e) {
+      return [false, e.message];
+    }
+  }
+
+  async createCustomRPCClient(timeout = 30000) {
+    const rpc = await this.customRPCProvider();
+    const {
+      protocol,
+      port,
+      host,
+      pathname,
+      apiKey,
+    } = rpc;
+
+    // Not really used after this point,
+    // but overwrite the local getAPIKey() just in case.
+    this.apiKey = apiKey;
+
+    return new this.nodeClientClass({
+      apiKey,
+      ssl: protocol === 'https',
+      host,
+      port: parseInt(port, 10),
+      path: pathname,
+      timeout,
+    });
+  }
+
+  async closeRPCClients() {
+    const clients = [...new Set([this.client, this.transactionClient].filter(Boolean))];
+    this.client = null;
+    this.transactionClient = null;
+
+    let firstError = null;
+    for (const client of clients) {
+      try {
+        await client.close();
+      } catch (error) {
+        firstError = firstError || error;
+      }
+    }
+
+    if (firstError) throw firstError;
+  }
+
+  async stop() {
+    const hsd = this.hsd;
+    this.hsd = null;
+    this.connectionType = null;
+    this.height = 0;
+
+    let firstError = null;
+    try {
+      await this.closeRPCClients();
+    } catch (error) {
+      firstError = error;
+    }
+
+    if (hsd) {
+      try {
+        await hsd.close();
+      } catch (error) {
+        firstError = firstError || error;
+      }
+    }
+
+    this.emit('stopped');
+    if (firstError) throw firstError;
+  }
+
+  async reset() {
+    dispatchToMainWindow({ type: START_NODE_STATUS_CHANGE });
+    try {
+      await this.stop();
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await this.start(this.networkName);
+      dispatchToMainWindow({ type: END_NODE_STATUS_CHANGE });
+    } catch (e) {
+      dispatchToMainWindow({ type: END_NODE_STATUS_CHANGE });
+      throw e;
+    }
+  }
+
+  // Must stay async: the IPC dispatcher only replies when the handler returns a
+  // thenable (ipc.js checks `maybePromise.then`), so a synchronous boolean would
+  // leave the renderer awaiting a response that never comes.
+  async getSyncEnabled() {
+    return this.syncEnabled;
+  }
+
+  async loadSyncEnabled() {
+    const stored = await get(NODE_SYNC_ENABLED);
+    return stored === '1';
+  }
+
+  async persistSyncEnabled(enabled) {
+    await put(NODE_SYNC_ENABLED, enabled === true ? '1' : '0');
+  }
+
+  async setSyncEnabled(enabled) {
+    const next = enabled === true;
+    if (next !== this.syncEnabled) {
+      this.syncEnabled = next;
+      await this.persistSyncEnabled(next);
+      await this.reset();
+    }
+    return this.syncEnabled;
+  }
+
+  async refreshNodeInfo() {
+    if (!this.client)
+      return;
+
+    await this._refreshNodeInfo();
+  };
+
+  _refreshNodeInfo = throttle(async () => {
+    try {
+      const info = await this.getInfo();
+
+      dispatchToMainWindow({
+        type: SET_NODE_INFO,
+        payload: info.chain,
+      });
+
+      if (info.chain.progress > 0.99) {
+        const fees = await this.getFees();
+
+        if (fees) {
+          dispatchToMainWindow({
+            type: SET_FEE_INFO,
+            payload: fees,
+          });
+        }
+      }
+
+      this.height = info.chain.height;
+    } catch (e) {}
+  }, 500, {trailing: true})
+
+  async generateToAddress(numblocks, address) {
+    return this._execRPC('generatetoaddress', [numblocks, address]);
+  }
+
+  async getInfo() {
+    await this._ensureStarted();
+    const info = await this.client.getInfo();
+    const chain = {...info.chain};
+
+    if (this.hsd && this.hsd.chain) {
+      chain.synced = this.hsd.chain.synced;
+    }
+
+    try {
+      const peers = await this.client.execute('getpeerinfo', []);
+      const peerHeights = peers
+        .map(peer => peer.bestheight)
+        .filter(Number.isFinite);
+
+      if (peerHeights.length > 0) {
+        chain.bestPeerHeight = Math.max(...peerHeights);
+      }
+    } catch (e) {
+      // Some custom RPC providers do not expose peer details. In that case,
+      // the renderer falls back to HSD's progress-based completion threshold.
+    }
+
+    return {...info, chain};
+  }
+
+  async getTXByAddresses(addresses) {
+    if (await this.getSpvMode()) {
+      const json = await hapiPost('/tx/address', {
+        addresses,
+        startBlock: 0,
+        endBlock: this.height,
+      });
+      return json.txs;
+    }
+    await this._ensureStarted();
+    return this.client.getTXByAddresses(addresses);
+  }
+
+  async getNameInfo(name) {
+    return this._execRPC('getnameinfo', [name], true);
+  }
+
+  async getNameByHash(hash) {
+    const cached = await get(prefixHash(hash));
+    if (cached) return cached;
+    const name = await this._execRPC('getnamebyhash', [hash], true);
+    put(prefixHash(hash), name);
+    return name;
+  }
+
+  async getBlock(height) {
+    if (await this.getSpvMode()) {
+      return hapiGet(`/block/${height}`);
+    }
+    return this.client.getBlock(height);
+  }
+
+  async getBlockByHeight(height, verbose, details) {
+    return this._execRPC('getblockbyheight', [height, verbose ? 1 : 0, details ? 1 : 0], true);
+  }
+
+  async getTx(hash) {
+    if (await this.getSpvMode()) {
+      return hapiGet(`/tx/${hash}`);
+    }
+    this._ensureStarted();
+    return this.client.getTX(hash);
+  }
+
+  getBroadcastClient(timeout) {
+    if (timeout >= TRANSACTION_TIMEOUT_MS && this.transactionClient) {
+      return this.transactionClient;
+    }
+    return this.client;
+  }
+
+  async broadcastRawTx(tx, {timeout = TRANSACTION_TIMEOUT_MS, assertCurrent = () => {}} = {}) {
+    const storagePath = await this.getDir();
+    await storageHealth.preflight(storagePath, {
+      source: 'transaction-broadcast-preflight',
+      transactionAttempted: true,
+    });
+    assertCurrent();
+    try {
+      const decoded = TX.decode(Buffer.from(tx, 'hex'));
+      const txid = decoded.txid();
+
+      if (this.hsd && this.hsd.mempool) {
+        await this.hsd.sendTX(decoded);
+        if (!this.hsd.mempool.hasEntry(decoded.hash())) {
+          const error = new Error(reviewText(null, 'nodeMempoolRejectErr'));
+          error.code = 'ETXREJECTED';
+          throw error;
+        }
+        return txid;
+      }
+
+      if (this.hsd && this.hsd.pool) {
+        const accepted = await this.hsd.pool.broadcast(decoded);
+        if (!accepted) {
+          const error = new Error(reviewText(null, 'nodePeersRejectTxErr'));
+          error.code = 'ETXREJECTED';
+          throw error;
+        }
+        return txid;
+      }
+
+      const client = this.getBroadcastClient(timeout);
+      await client.broadcast(tx);
+      return txid;
+    } catch (error) {
+      storageHealth.reportError(error, {
+        source: 'transaction-broadcast',
+        transactionAttempted: true,
+      });
+      throw error;
+    }
+  }
+
+  async sendRawAirdrop(data) {
+    return this._execRPC('sendrawairdrop', [data]);
+  }
+
+  async getFees() {
+    await this._ensureStarted();
+    const slowRes = await this._execRPC('estimatesmartfee', [5], true);
+    const standardRes = await this._execRPC('estimatesmartfee', [2], true);
+    const fastRes = await this._execRPC('estimatesmartfee', [1], true);
+    const slow = BigNumber.max(new BigNumber(slowRes.fee), MIN_FEE).toFixed(6);
+    const standard = BigNumber.max(new BigNumber(standardRes.fee), MIN_FEE * 5).toFixed(6);
+    const fast = BigNumber.max(new BigNumber(fastRes.fee), MIN_FEE * 10).toFixed(6);
+
+    return {
+      slow,
+      standard,
+      fast,
+    };
+  }
+
+  async getAverageBlockTime() {
+    await this._ensureStarted();
+
+    const info = await this.client.getInfo();
+    const height = info.chain.height;
+    if (height <= 1) {
+      return DEFAULT_BLOCK_TIME;
+    }
+
+    const averageOver = 50;
+    const startHeight = Math.max(height - averageOver, 1);
+    let previous = 0;
+    let count = 0;
+    let sum = 0;
+    for (let i = startHeight; i <= height; i++) {
+      const block = await this._execRPC('getblockbyheight', [i, true, false], true);
+      if (previous === 0) {
+        previous = block.time;
+        continue;
+      }
+
+      count++;
+      sum += (block.time - previous);
+      previous = block.time;
+    }
+
+    return Math.floor((sum / count) * 1000);
+  }
+
+  async getMTP() {
+    const info = await this._execRPC('getblockchaininfo');
+    return info.mediantime;
+  };
+
+  async getCoin(hash, index) {
+    if (await this.getSpvMode()) {
+      return hapiGet(`/coin/${hash}/${index}`);
+    }
+    return this.client.getCoin(hash, index);
+  }
+
+  async verifyMessageWithName(name, signature, message) {
+    if (await this.getSpvMode()) {
+      const result = await this.getNameInfo(name);
+      const owner = result?.info?.owner;
+
+      if (!owner) {
+        throw new Error(reviewText(null, 'nodeNameOwnerMissingErr'));
+      }
+
+      const coin = await this.getCoin(owner.hash, owner.index);
+
+      if (!coin) {
+        throw new Error(reviewText(null, 'nodeOwnerAddressMissingErr'));
+      }
+
+      return this._execRPC('verifymessage', [coin.address, signature, message]);
+    }
+
+    return this._execRPC('verifymessagewithname', [name, signature, message]);
+  }
+
+  async getRawMempool(verbose = false) {
+    return this._execRPC('getrawmempool', [verbose ? 1 : 0]);
+  }
+
+  async getHNSPrice() {
+    try {
+      const response = await (
+        await fetch(
+          'https://api.coingecko.com/api/v3/simple/price?ids=handshake&vs_currencies=usd'
+        )
+      ).json();
+      return response.handshake.usd || 0;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  async getDNSSECProof(url) {
+    return this._execRPC('getdnssecproof', [url, true]);
+  }
+
+  async sendRawClaim(base64) {
+    return this._execRPC('sendrawclaim', [base64]);
+  }
+
+  getAgent() {
+    const { name, version } = pkg;
+
+    return `${name}:${version}`;
+  }
+
+  async _ensureStarted() {
+    if (!this.client)
+      throw new Error(reviewText(null, 'nodeNoClientErr'));
+  }
+
+  async _execHostedRPC(method, args) {
+    const json = await hapiPost('', {
+      method,
+      params: args,
+    });
+
+    if (!json) {
+      throw new Error(reviewText(null, 'nodeNoRpcBodyErr'));
+    }
+
+    return json.result;
+  }
+
+  async _execRPC(method, args, useHostedRPCOnSpv) {
+    if (useHostedRPCOnSpv && await this.getSpvMode()) {
+      return this._execHostedRPC(method, args);
+    }
+
+    await this._ensureStarted();
+    return this.client.execute(method, args);
+  }
+}
+
+export const service = new NodeService();
+
+const sName = 'Node';
+const methods = {
+  start: (networkName) => service.start(networkName),
+  stop: () => service.stop(),
+  reset: () => service.reset(),
+  getSyncEnabled: () => service.getSyncEnabled(),
+  setSyncEnabled: enabled => service.setSyncEnabled(enabled),
+  getAPIKey: () => service.getAPIKey(),
+  getNoDns: () => service.getNoDns(),
+  getSpvMode: () => service.getSpvMode(),
+  getSpvHelperApiSettings: () => service.getSpvHelperApiSettings(),
+  setSpvHelperApiBaseUrl: (baseUrl) => service.setSpvHelperApiBaseUrl(baseUrl),
+  resetSpvHelperApiBaseUrl: () => service.resetSpvHelperApiBaseUrl(),
+  validateSpvHelperApiBaseUrl: (baseUrl) => service.validateSpvHelperApiBaseUrl(baseUrl),
+  getInfo: () => service.getInfo(),
+  getNameInfo: (name) => service.getNameInfo(name),
+  getNameByHash: (hash) => service.getNameByHash(hash),
+  getBlock: (height) => service.getBlock(height),
+  generateToAddress: (numblocks, address) => service.generateToAddress(numblocks, address),
+  getTXByAddresses: (addresses) => service.getTXByAddresses(addresses),
+  getBlockByHeight: (height, verbose, details) => service.getBlockByHeight(height, verbose, details),
+  getTx: (hash) => service.getTx(hash),
+  verifyMessageWithName: (name, signature, message) => service.verifyMessageWithName(name, signature, message),
+  broadcastRawTx: (tx) => service.broadcastRawTx(tx),
+  sendRawAirdrop: (data) => service.sendRawAirdrop(data),
+  getFees: () => service.getFees(),
+  getAverageBlockTime: () => service.getAverageBlockTime(),
+  getMTP: () => service.getMTP(),
+  getCoin: (hash, index) => service.getCoin(hash, index),
+  setNodeDir: data => service.setNodeDir(data),
+  setAPIKey: data => service.setAPIKey(data),
+  setNoDns: data => service.setNoDns(data),
+  setSpvMode: data => service.setSpvMode(data),
+  getDir: () => service.getDir(),
+  getHNSPrice: () => service.getHNSPrice(),
+  testCustomRPCClient: (networkType) => service.testCustomRPCClient(networkType),
+  getDNSSECProof: (url) => service.getDNSSECProof(url),
+  sendRawClaim: (base64) => service.sendRawClaim(base64),
+};
+
+export async function start(server) {
+  await service.configurePaths();
+  server.withService(sName, methods);
+}
+
+const spvHelperClient = createSpvHelperClient();
+
+async function hapiGet(path = '') {
+  const baseUrl = await service.getSpvHelperApiBaseUrl();
+  return spvHelperClient.get(baseUrl, path);
+}
+
+async function hapiPost(path = '', body) {
+  const baseUrl = await service.getSpvHelperApiBaseUrl();
+  return spvHelperClient.post(baseUrl, path, body);
+}

@@ -1,0 +1,38 @@
+@import '../../../variables';
+@import '../wizard';
+
+.connect {
+  &__support-cta {
+    align-self: center;
+    margin: 0 0 0.5rem;
+    color: var(--fns-text-secondary);
+    font-size: 0.875rem;
+    text-align: center;
+    cursor: pointer;
+    transition: color var(--fns-duration-fast) var(--fns-ease);
+
+    &:hover {
+      color: var(--fns-text);
+    }
+  }
+}
+
+.ledger-circle-check-container {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--fns-border);
+  border-radius: 50%;
+  background: var(--fns-surface);
+
+  &__active {
+    border-color: var(--fns-brand);
+    background-color: var(--fns-brand);
+    background-image: url(../../../assets/images/check-icon-white.svg);
+    background-size: cover;
+    background-position: center;
+  }
+}
+
+.clickable {
+  cursor: pointer;
+}

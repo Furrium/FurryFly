@@ -1,0 +1,63 @@
+import {SHAKEX_MANIFEST} from './shakex/manifest';
+import {LIQUIDITY_ADDON_NAME} from '../constants/liquiditySpotChannels';
+import {AddonRegistry, createCatalogEntries, validateManifest} from './foundation';
+
+const BUILTIN_ADDON_MANIFESTS = Object.freeze([
+  SHAKEX_MANIFEST,
+  {
+    schemaVersion: 1,
+    id: 'shakedex-marketplace',
+    name: 'Shakedex Marketplace',
+    nameKey: 'headingShakedexMarketplace',
+    publisher: {name: 'FurryFly Wallet maintainers'},
+    version: '1.0.0',
+    description: 'FurryFly\'s built-in Shakedex marketplace and channel interface.',
+    descriptionKey: 'addonShakedexMarketplaceDescription',
+    entry: {kind: 'trusted-bundled-route', route: '/exchange'},
+    capabilities: ['marketplace.readListings'],
+    origins: [],
+    networks: ['main', 'testnet', 'regtest', 'simnet'],
+  },
+  {
+    schemaVersion: 1,
+    id: 'send-name',
+    name: 'Send Name',
+    nameKey: 'sendNameTab',
+    publisher: {name: 'FurryFly Wallet maintainers'},
+    version: '1.0.0',
+    description: 'FurryFly\'s built-in name transfer and paid-claim flow.',
+    descriptionKey: 'addonSendNameDescription',
+    entry: {kind: 'trusted-bundled-route', route: '/send?asset=name&mode=send'},
+    capabilities: ['names.requestTransfer'],
+    origins: [],
+    networks: ['main', 'testnet', 'regtest', 'simnet'],
+  },
+  {
+    schemaVersion: 1,
+    id: 'liquidity-spot',
+    name: LIQUIDITY_ADDON_NAME,
+    publisher: {
+      name: 'Liquidity Spot',
+      url: 'https://liquidity.spot',
+    },
+    version: '1.0.0',
+    description: 'External Liquidity Spot P2P coordination preview.',
+    descriptionKey: 'addonLiquidityPreviewDescription',
+    entry: {kind: 'external-content', url: 'https://liquidity.spot/p2p'},
+    capabilities: ['external.openUrl'],
+    origins: ['https://liquidity.spot'],
+    networks: ['main'],
+  },
+].map(validateManifest));
+
+const builtInAddonRegistry = new AddonRegistry(BUILTIN_ADDON_MANIFESTS);
+
+function createBuiltInCatalog(definitions) {
+  return createCatalogEntries(builtInAddonRegistry, definitions);
+}
+
+export {
+  BUILTIN_ADDON_MANIFESTS,
+  builtInAddonRegistry,
+  createBuiltInCatalog,
+};

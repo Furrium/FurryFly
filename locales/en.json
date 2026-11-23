@@ -2194,5 +2194,6 @@
   "sendNamePriceHint": "Leave blank for a normal name transfer. Add a price only when the buyer should pay to claim.",
   "sendNameNoteHint": "Saved in FurryFly history and the exported claim file only. Not written on-chain.",
   "sendNameLoadFile": "Load File",
-  "sendNameBulkTitle": "Bulk Transfer Names"
+  "sendNameBulkTitle": "Bulk Transfer Names",
+  "featureNeedsChainSync": "This feature is unavailable until the blockchain finishes syncing. You can follow the progress at the bottom of the sidebar."
 }

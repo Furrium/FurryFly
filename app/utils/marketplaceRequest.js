@@ -1,5 +1,6 @@
 import { dedupeMarketplaceAuctionsByName } from './marketplaceAuctions';
 import {translateLocale} from './i18n';
+import {isChainReady, looksLikeTransportError} from './chainReadiness';
 
 // The Marketplace page renders the message string directly, so this helper takes the
 // selected language and returns text instead of a locale key.
@@ -77,12 +78,21 @@ export async function fetchMarketplaceAuctions(client, page = 1, availability = 
   return normalizeMarketplaceResponse(response);
 }
 
-export function classifyMarketplaceError(error, locale) {
+export function classifyMarketplaceError(error, locale, options = {}) {
   const message = `${error && error.message || ''}`.trim();
   const code = error && error.code;
   const isTimeout = code === 'MARKETPLACE_TIMEOUT'
     || code === 'ETIMEDOUT'
     || /timed?\s*out|timeout/i.test(message);
+
+  // A transport failure while the chain is behind is the sync case, not a marketplace
+  // fault; saying so is the whole point of passing chainReady in.
+  if (options.chainReady === false && looksLikeTransportError(error)) {
+    return {
+      kind: MARKETPLACE_STATUS.ERROR,
+      message: translate(locale, 'featureNeedsChainSync'),
+    };
+  }
 
   return {
     kind: isTimeout ? MARKETPLACE_STATUS.TIMEOUT : MARKETPLACE_STATUS.ERROR,

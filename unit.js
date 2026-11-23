@@ -104,3 +104,4 @@ require('./app/background/wallet/tests/recoveryAdmission.spec');
 require('./app/components/LanguagePicker/LanguagePicker.spec');
 
 require('./app/background/tests/protocolRegistration.spec');
+require('./app/utils/tests/chainReadiness.spec');

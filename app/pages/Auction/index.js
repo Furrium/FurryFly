@@ -25,6 +25,7 @@ import Collapsible from '../../components/Collapsible';
 import Blocktime from '../../components/Blocktime';
 import AuctionGraph from '../../components/AuctionGraph';
 import { showError, showSuccess } from '../../ducks/notifications';
+import { describeChainGatedError } from '../../utils/chainReadiness';
 import VickreyProcess from './VickreyProcess';
 import BidHistory from './BidHistory';
 import Records from '../../components/Records';
@@ -149,7 +150,7 @@ export default class Auction extends Component {
       console.error(e);
       Sentry.captureException(e);
       const t = this.context.t;
-      const message = e.message || t('auctionLoadErr');
+      const message = describeChainGatedError(e, this.props.chain, t) || t('auctionLoadErr');
       this.setState({loadError: message});
       this.props.showError(`${message} ${t('auctionTryAgainSuffix')}`);
       if (this.isMountedForRequests && request === this.loadGeneration) {

@@ -6,6 +6,7 @@ import networks from 'hsd/lib/protocol/networks.js';
 import {getFinalizeFromTransferTx} from "../utils/shakedex";
 import { LISTING_STATUS } from '../constants/exchange.js';
 import { translateLocale } from '../utils/i18n';
+import { isChainReady } from '../utils/chainReadiness';
 import { SET_WALLET } from './walletReducer.js';
 import {
   classifyMarketplaceError,
@@ -132,7 +133,9 @@ export const getExchangeAuctions = (availability = 'available', filters = {}) =>
   try {
     auctions = await shakedex.getExchangeAuctions(currentPage, availability, filters);
   } catch (e) {
-    const error = classifyMarketplaceError(e, selectedLocale(getState));
+    const error = classifyMarketplaceError(e, selectedLocale(getState), {
+      chainReady: isChainReady(getState().node.chain),
+    });
     dispatch({
       type: GET_EXCHANGE_AUCTIONS_ERR,
       meta: {requestId},

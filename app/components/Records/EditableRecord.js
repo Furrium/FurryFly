@@ -63,7 +63,7 @@ class EditableRecord extends Component {
 
     let record;
     try {
-      record = deserializeRecord({type, value});
+      record = deserializeRecord({type, value}, this.context.t);
     } catch (e) {
       this.setState({errorMessage: e.message});
       return;

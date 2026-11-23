@@ -1324,6 +1324,7 @@ export default class Settings extends Component {
   }
 
   render() {
+    const {t} = this.context;
     return (
       <ContentArea className="settings" noPadding>
         { this.renderNav() }

@@ -126,7 +126,7 @@ const deserializers = {
     type: RECORD_TYPE.NS,
     ns: value,
   }),
-  [RECORD_TYPE.DS]: (value) => {
+  [RECORD_TYPE.DS]: (value, t) => {
     const parts = value.trim().split(' ');
     if (parts.length !== 4) {
       throw new Error(t('recordErrDsFormat'));
@@ -140,7 +140,7 @@ const deserializers = {
       digest: parts[3],
     };
   },
-  [RECORD_TYPE.GLUE4]: (value) => {
+  [RECORD_TYPE.GLUE4]: (value, t) => {
     const parts = value.trim().split(' ');
     if (parts.length !== 2) {
       throw new Error(t('recordErrGlue4Format'));
@@ -152,7 +152,7 @@ const deserializers = {
       address: parts[1],
     };
   },
-  [RECORD_TYPE.GLUE6]: (value) => {
+  [RECORD_TYPE.GLUE6]: (value, t) => {
     const parts = value.trim().split(' ');
     if (parts.length !== 2) {
       throw new Error(t('recordErrGlue6Format'));
@@ -174,16 +174,16 @@ const deserializers = {
   }),
 };
 
-export function deserializeRecord({type, value}) {
+export function deserializeRecord({type, value}, t = defaultTranslate) {
   const deserializer = deserializers[type];
   if (!deserializer) {
     throw new Error(t('recordErrInvalidType'));
   }
 
-  return deserializer(value);
+  return deserializer(value, t);
 }
 
-export function serializeRecord(record) {
+export function serializeRecord(record, t = defaultTranslate) {
   const serializer = serializers[record.type];
   if (!serializer) {
     throw new Error(t('recordErrInvalidType'));

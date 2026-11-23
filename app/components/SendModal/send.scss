@@ -16,11 +16,49 @@
     margin: 0 0.25rem;
     padding: 0 1rem;
     white-space: nowrap;
+
+    // %btn-secondary:hover fills rgba($white, 0.5), a milky block on the dark canvas.
+    // Declared here so it comes after the placeholder and wins at equal specificity.
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--fns-brand-rgb) / 0.12);
+      border-color: var(--fns-brand, #00a97e);
+      color: var(--fns-brand, #5cffd0);
+    }
   }
 
+  // Deliberately not @extend %btn-primary.
+  //
+  // The selected tab carries both classes, and %btn-secondary is defined after
+  // %btn-primary in variables.scss, so its transparent background won the cascade: the
+  // active tab rendered exactly like the inactive one. On hover the inherited
+  // :hover:not(:disabled) outranked %btn-secondary:hover by one :not() and set a green
+  // fill while the colour stayed green, leaving green text on green.
+  //
+  // Stating the state here, after the base rule, puts rest and hover under one selector
+  // that no longer depends on declaration order between the placeholders.
   &__asset-tab--active {
-    @extend %btn-primary;
     width: auto;
+    background-color: var(--fns-brand, #00a97e);
+    border-color: var(--fns-brand, #00a97e);
+    color: var(--fns-accent-contrast, #04121f);
+
+    &:hover:not(:disabled),
+    &:focus:not(:disabled) {
+      background-color: var(--fns-brand, #00a97e);
+      border-color: var(--fns-brand, #00a97e);
+      color: var(--fns-accent-contrast, #04121f);
+      filter: brightness(1.06);
+      box-shadow: var(--fns-glow-accent, 0 0 12px rgb(92 255 208 / 0.45));
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      background-color: var(--fns-brand, #00a97e);
+      color: var(--fns-accent-contrast, #04121f);
+      filter: brightness(0.96);
+      box-shadow: none;
+      transform: translateY(0);
+    }
   }
 
   &__container {

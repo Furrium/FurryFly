@@ -17,11 +17,41 @@
     height: 2rem;
     margin: 0 0.25rem;
     padding: 0 1rem;
+
+    // %btn-secondary:hover fills rgba($white, 0.5), a milky block on the dark canvas.
+    &:hover:not(:disabled) {
+      background-color: rgb(var(--fns-brand-rgb) / 0.12);
+      border-color: var(--fns-brand, #00a97e);
+      color: var(--fns-brand, #5cffd0);
+    }
   }
 
+  // Same reason as .send__asset-tab--active: the active tab carries both classes, and
+  // %btn-secondary is defined after %btn-primary, so @extend %btn-primary lost the
+  // background at rest and green-on-green on hover.
   &__tab--active {
-    @extend %btn-primary;
     width: auto;
+    background-color: var(--fns-brand, #00a97e);
+    border-color: var(--fns-brand, #00a97e);
+    color: var(--fns-accent-contrast, #04121f);
+
+    &:hover:not(:disabled),
+    &:focus:not(:disabled) {
+      background-color: var(--fns-brand, #00a97e);
+      border-color: var(--fns-brand, #00a97e);
+      color: var(--fns-accent-contrast, #04121f);
+      filter: brightness(1.06);
+      box-shadow: var(--fns-glow-accent, 0 0 12px rgb(92 255 208 / 0.45));
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      background-color: var(--fns-brand, #00a97e);
+      color: var(--fns-accent-contrast, #04121f);
+      filter: brightness(0.96);
+      box-shadow: none;
+      transform: translateY(0);
+    }
   }
 
   &__bulk-shortcut {
@@ -36,7 +66,10 @@
     padding: 0.75rem 1rem;
 
     span {
-      color: rgba($black, 0.65);
+      // Was rgba($black, 0.65): black on the dark canvas measured 1.1:1, so the prompt was
+      // effectively invisible. The dark layer only set the colour on .send-name itself,
+      // which this more specific rule outranked.
+      color: var(--fns-text-secondary, #9aa4af);
       font-size: 0.82rem;
     }
 

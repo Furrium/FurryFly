@@ -145,8 +145,13 @@ export default {
         type: 'asset/resource',
       },
       {
+        // Inlined rather than emitted beside the bundle. The renderer runs from file://,
+        // where @font-face is fetched in CORS mode with a null origin and a sibling file
+        // has no Access-Control-Allow-Origin to satisfy it - the faces failed to load
+        // while images from the same directory were fine. A data: URL has no origin to
+        // check. The only fonts here are two five-kilobyte display faces.
         test: /\.(woff|woff2|eot|ttf|otf)$/i,
-        type: 'asset/resource',
+        type: 'asset/inline',
       },
     ]
   },

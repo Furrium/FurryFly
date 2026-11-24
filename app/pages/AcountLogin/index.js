@@ -11,6 +11,8 @@ import { withRouter } from 'react-router';
 import walletClient from "../../utils/walletClient";
 import {I18nContext} from "../../utils/i18n";
 import {clearDeeplink, setDeeplinkParams} from '../../ducks/app';
+import FurryFlyLogo from '../../assets/images/furryfly-logo-circle.svg';
+import BRAND from '../../constants/branding';
 
 @withRouter
 @connect(
@@ -104,7 +106,18 @@ export default class AccountLogin extends Component {
 
     return (
       <div className="login">
-        <div className="login_header_text">{t('loginTitle')}</div>
+        {/* Brand column. On a wide window the form on its own left most of the canvas
+            empty, so the lock screen carries the product identity on the other half. */}
+        <aside className="login__brand" aria-hidden="true">
+          <div
+            className="login__mark"
+            style={{backgroundImage: `url(${FurryFlyLogo})`}}
+          />
+          <div className="login__wordmark">{BRAND.displayName}</div>
+          <p className="login__tagline">{t('loginBrandTagline')}</p>
+        </aside>
+        <section className="login__panel">
+          <div className="login_header_text">{t('loginTitle')}</div>
         <Submittable onSubmit={() => this.handleLogin(passphrase)}>
           <Dropdown
             items={this.props.wallets.map((w) => ({
@@ -150,6 +163,7 @@ export default class AccountLogin extends Component {
         >
           {t('createNewWallet')}
         </Link>
+        </section>
       </div>
     );
   }

@@ -1,26 +1,87 @@
 @import '../../variables';
 @import '../Onboarding/wizard';
 
-// Wallet unlock screen. Matches the landing page: one centred column on the canvas,
-// the mark and the wallet picker above, the action below.
+// Wallet unlock screen. Two halves: the product identity on the left, the unlock form on
+// the right. A single centred column left most of a wide window empty, so the brand side
+// carries the space instead of the form having to grow.
 //
 // The markup is a flat list of elements rather than a BEM tree, so the layout is
 // expressed by positioning those elements inside the container instead of nesting.
 .login {
   position: relative;
   box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--fns-canvas);
+  color: var(--fns-text);
+}
+
+.login__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1rem;
+  box-sizing: border-box;
+  min-height: 0;
+  padding: clamp(2rem, 6vw, 5rem);
+  border-right: 1px solid var(--fns-border);
+  // A faint wash so this half reads as a surface rather than as unused canvas.
+  background:
+    radial-gradient(circle at 18% 22%, rgb(var(--fns-brand-rgb) / 0.10), transparent 58%),
+    radial-gradient(circle at 78% 82%, rgb(var(--fns-accent-rgb) / 0.08), transparent 52%);
+}
+
+.login__mark {
+  width: 4.5rem;
+  height: 4.5rem;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.login__wordmark {
+  font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+  font-weight: var(--fns-weight-bold);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.login__tagline {
+  max-width: 22rem;
+  margin: 0;
+  color: var(--fns-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.login__panel {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
   gap: 0.75rem;
+  box-sizing: border-box;
+  min-height: 0;
   padding: clamp(1.5rem, 5vh, 3rem) 1.5rem;
   overflow-y: auto;
-  background: var(--fns-canvas);
-  color: var(--fns-text);
+}
+
+// Narrow windows cannot give each half a readable width, so the page falls back to the
+// single centred column and drops the brand block.
+@media (max-width: 60rem) {
+  .login {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login__brand {
+    display: none;
+  }
 }
 
 .login_header_text {

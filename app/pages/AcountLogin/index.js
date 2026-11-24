@@ -11,7 +11,6 @@ import { withRouter } from 'react-router';
 import walletClient from "../../utils/walletClient";
 import {I18nContext} from "../../utils/i18n";
 import {clearDeeplink, setDeeplinkParams} from '../../ducks/app';
-import FurryFlyLogo from '../../assets/images/furryfly-logo-circle.svg';
 import BRAND from '../../constants/branding';
 
 @withRouter
@@ -109,10 +108,10 @@ export default class AccountLogin extends Component {
         {/* Brand column. On a wide window the form on its own left most of the canvas
             empty, so the lock screen carries the product identity on the other half. */}
         <aside className="login__brand" aria-hidden="true">
-          <div
-            className="login__mark"
-            style={{backgroundImage: `url(${FurryFlyLogo})`}}
-          />
+          {/* The mark is painted by login.scss rather than imported here: a bare SVG
+              import is a webpack-only affordance, and the Node test runner loads this
+              module directly, where it would be parsed as JavaScript. */}
+          <div className="login__mark" />
           <div className="login__wordmark">{BRAND.displayName}</div>
           <p className="login__tagline">{t('loginBrandTagline')}</p>
         </aside>

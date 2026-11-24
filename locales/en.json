@@ -569,7 +569,7 @@
   "lockup": "Lockup",
   "logDownloadSuccess": "Log file saved to %s.",
   "loginError": "Invalid password.",
-  "loginTitle": "Log in to your wallet",
+  "loginTitle": "Log in",
   "logout": "Logout",
   "manage": "Manage",
   "marketplaceBuyWarning": "Please confirm your marketplace purchase below. Buying a listed name is irreversible once submitted.",

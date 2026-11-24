@@ -569,7 +569,7 @@
   "lockup": "锁定总额",
   "logDownloadSuccess": "日志文件已保存至 %s。",
   "loginError": "密码错误。",
-  "loginTitle": "登录钱包",
+  "loginTitle": "登录",
   "logout": "退出登录",
   "manage": "管理",
   "marketplaceBuyWarning": "请核对下方市场购买信息。购买挂单域名一经提交便不可撤销。",

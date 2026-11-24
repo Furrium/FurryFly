@@ -31,7 +31,13 @@ function Reel({ digit, index, animate }) {
 
   return (
     <span className="lcd-reel" style={{'--lcd-delay': `${index * 70}ms`}}>
-      <span className="lcd-reel__strip" style={{transform: `translateY(${-offset}em)`}}>
+      {/* The step is a custom property rather than 1em: the window is slightly taller
+          than the glyph so its top edge is not shaved off, and the strip has to move by
+          the window height for the digits to stay aligned. */}
+      <span
+        className="lcd-reel__strip"
+        style={{transform: `translateY(calc(${-offset} * var(--lcd-cell-h, 1em)))`}}
+      >
         {STRIP.map((value, i) => <span className="lcd-reel__cell" key={i}>{value}</span>)}
       </span>
     </span>

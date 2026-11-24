@@ -15,9 +15,15 @@
 
 // One digit window. The strip inside holds 0-9 twice and is translated so the wanted
 // digit lands here; the overflow is what makes it read as a wheel rather than a swap.
+//
+// The cell is deliberately taller than the glyph. DSEG's ink is exactly one em with no
+// descent, so at a 1em window the topmost row of the digit sat on the clip edge and was
+// shaved. The extra height is all above the glyph, which is why the cell bottom-aligns.
 .lcd-reel {
+  --lcd-cell-h: 1.14em;
+
   display: block;
-  height: 1em;
+  height: var(--lcd-cell-h);
   overflow: hidden;
 }
 
@@ -31,10 +37,11 @@
 }
 
 .lcd-reel__cell {
-  display: block;
-  height: 1em;
-  line-height: 1em;
-  text-align: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: var(--lcd-cell-h);
+  line-height: 1;
 }
 
 // Separators do not roll: the thousands comma and the decimal point stay put.

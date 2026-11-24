@@ -9,9 +9,13 @@
 //
 // font-display: block rather than swap: a fallback numeral flashing before the right one
 // would read as a broken counter, and the readout is decorative enough to wait for.
+//
+// The url() paths are written relative to app/, not to this file: an @import is inlined
+// into the importing stylesheet (global.scss, which lives in app/), and the loader
+// resolves every url() against that file's directory.
 @font-face {
   font-family: 'DSEG7 Classic';
-  src: url('../assets/fonts/DSEG7Classic-Regular.woff2') format('woff2');
+  src: url('./assets/fonts/DSEG7Classic-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: block;
@@ -19,7 +23,7 @@
 
 @font-face {
   font-family: 'DSEG14 Classic';
-  src: url('../assets/fonts/DSEG14Classic-Regular.woff2') format('woff2');
+  src: url('./assets/fonts/DSEG14Classic-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: block;

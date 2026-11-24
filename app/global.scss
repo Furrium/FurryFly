@@ -92,23 +92,15 @@ body.bob-theme-dark {
 
   .sidebar {
     background: var(--fns-surface);
-    box-shadow: 1px 0 0 0 rgba(255, 255, 255, 0.08);
+    // No shadow line here: the component draws its own 1px token border, and a second
+    // hairline next to it produced a double edge.
   }
 
-  .sidebar__action {
-    color: #e6edf3;
+  // .sidebar__action is no longer repainted here. Its own rules are token-based, and this
+  // block used to flatten all three states to the same colour, so hover and selected were
+  // only distinguishable by their background.
 
-    &:hover {
-      color: #ffffff;
-      background-color: rgb(var(--fns-brand-rgb) / 0.18);
-    }
-
-    &--selected {
-      background-color: rgb(var(--fns-brand-rgb) / 0.28);
-    }
-  }
-
-  .sidebar__footer,
+  .settings__content__section--disabled,
   .settings__content__section--disabled,
   .dropdown__current-item,
   .dropdown__option,

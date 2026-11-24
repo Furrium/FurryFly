@@ -2198,5 +2198,18 @@
   "featureNeedsChainSync": "This feature is unavailable until the blockchain finishes syncing. You can follow the progress at the bottom of the sidebar.",
   "sendTypeLabel": "Send type",
   "sendNameFinalizeTo": "Domain will finalize to %s.",
-  "sendNameUnknownRecipient": "an unknown recipient"
+  "sendNameUnknownRecipient": "an unknown recipient",
+  "synced": "Synced",
+  "checked": "Checked",
+  "ofTotal": "of %s",
+  "proofCreatingProofs": "Creating Proofs",
+  "proofKeyLocalOnly": "These are used offline and never leave your computer.",
+  "auctionGraphTba": "TBA",
+  "auctionGraphCurrentBlock": "Current Block:",
+  "auctionPhaseBidding": "Bidding Period",
+  "auctionPhaseReveal": "Reveal Period",
+  "walletSyncingProgress": "Syncing wallet... (%s%)",
+  "exchangeOldBidsStillBuy": "Anyone with the old bids can still buy this name at ",
+  "exchangeOldBidsSuffix": "!",
+  "domainDataNone": "NULL"
 }

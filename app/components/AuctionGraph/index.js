@@ -7,6 +7,7 @@ import ProgressBar from '../ProgressBar';
 import Blocktime from '../Blocktime';
 import { isBidding, isOpening, isReveal, } from '../../utils/nameHelpers';
 import './auction-graph.scss';
+import { I18nContext } from '../../utils/i18n';
 
 const OPENING = 0;
 const ISBIDDING = 1;
@@ -22,6 +23,8 @@ const REVEALING = 2;
     };
   })
 export default class AuctionGraph extends Component {
+  static contextType = I18nContext;
+
   static propTypes = {
     domain: PropTypes.object.isRequired,
   }
@@ -114,7 +117,7 @@ export default class AuctionGraph extends Component {
         "auction-graph__column__text__col--right": alignRight,
       })} >
         <div className="auction-graph__column__text">
-          {isDone ? '' : 'TBA'}
+          {isDone ? '' : this.context.t('auctionGraphTba')}
         </div>
       </div>
     )
@@ -133,19 +136,19 @@ export default class AuctionGraph extends Component {
   
     return (
       <div className="auction-graph">
-        <div className="auction-graph__current-block">Current Block: #{currentBlock}</div>
+        <div className="auction-graph__current-block">{this.context.t('auctionGraphCurrentBlock')} #{currentBlock}</div>
         <div className="auction-graph__column" style={{maxWidth: '15%'}}>
-          <div className="auction-graph__column__headline">Open</div>
+          <div className="auction-graph__column__headline">{this.context.t('open')}</div>
           <ProgressBar percentage={openProgress} />
           { this.maybeRenderDateBlock(() => isOpening(domain), stats.openPeriodStart, stats.hoursUntilBidding) || this.renderPlaceholder(OPENING < currentStep)}
         </div>
         <div className="auction-graph__column" style={{maxWidth: '30%'}}>
-          <div className="auction-graph__column__headline">Bidding Period</div>
+          <div className="auction-graph__column__headline">{this.context.t('auctionPhaseBidding')}</div>
           <ProgressBar percentage={biddingProgress} />
             { this.maybeRenderDateBlock(() => isOpening(domain), stats.openPeriodEnd, stats.hoursUntilBidding) || this.maybeRenderDateBlock(() => isBidding(domain), stats.bidPeriodStart, stats.hoursUntilReveal)|| this.renderPlaceholder(ISBIDDING < currentStep)}
         </div>
         <div className="auction-graph__column" style={{maxWidth: '55%'}}>
-          <div className="auction-graph__column__headline">Reveal Period</div>
+          <div className="auction-graph__column__headline">{this.context.t('auctionPhaseReveal')}</div>
           <ProgressBar percentage={revealProgress}/>
           <div className="auction-graph__column__text__row">
             { this.maybeRenderDateBlock(() => isBidding(domain), stats.bidPeriodEnd, stats.hoursUntilReveal) || this.maybeRenderDateBlock(() => isReveal(domain), stats.revealPeriodStart || stats.bidPeriodEnd, stats.hoursUntilClose) || this.renderPlaceholder(REVEALING < currentStep)}

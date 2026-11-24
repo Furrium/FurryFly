@@ -118,8 +118,8 @@ export class GenerateListingModal extends Component {
         <div className="exchange__place-listing-modal">
           {listing.lowestDeprecatedPrice &&
             <Alert type="warning">
-              Anyone with the old bids will still be able to buy this name
-              at <strong>{listing.lowestDeprecatedPrice/1e6} HNS</strong>!<br />
+              {t('exchangeOldBidsStillBuy')}
+              <strong>{listing.lowestDeprecatedPrice/1e6} HNS</strong>{t('exchangeOldBidsSuffix')}<br />
               {t('exchangeCancelListingHint')}
             </Alert>
           }

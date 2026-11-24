@@ -61,7 +61,7 @@ class DomainDetails extends Component {
       )],
       [t('data'), (
         <div className="domain-detail__value__data">
-          { info.data ? <Hash value={info.data} /> : 'NULL' }
+          { info.data ? <Hash value={info.data} /> : t('domainDataNone') }
           { info.data && <CopyButton content={info.data} /> }
         </div>
       )],

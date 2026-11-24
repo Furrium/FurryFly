@@ -222,13 +222,13 @@ export default class ShakedexDeprecated extends Component {
                   generatingListing: listing,
                 })}
               >
-                Regenerate
+                {this.context.t('regenerate')}
               </div>
               <div
                 className="bid-action__link"
                 onClick={() => this.cancelDeprecatedAuctions([listing])}
               >
-                Cancel
+                {this.context.t('cancel')}
               </div>
             </div>
           }
@@ -238,7 +238,7 @@ export default class ShakedexDeprecated extends Component {
                 className="bid-action__link"
                 onClick={() => this.finalizeCancelDeprecatedAuctions([listing])}
               >
-                Finalize
+                {this.context.t('finalize')}
               </div>
             </div>
           }

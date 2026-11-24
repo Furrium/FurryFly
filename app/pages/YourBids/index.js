@@ -361,7 +361,7 @@ class YourBids extends Component {
             onChange={currentPageIndex => this.setState({ currentPageIndex })}
             currentIndex={currentPageIndex}
           />
-          <div className="domain-manager__go-to__total">of {totalPages}</div>
+          <div className="domain-manager__go-to__total">{t('ofTotal', totalPages)}</div>
         </div>
       </div>
     )

@@ -779,7 +779,7 @@ class SendName extends Component {
         </div>
         <div className="send-name__actions">
           <button onClick={this.verifyClaimPayload} disabled={!this.state.claimText}>
-            Verify
+            {this.context.t('verify')}
           </button>
           <button onClick={this.onSelectClaimFile}>
             {this.context.t('sendNameLoadFile')}
@@ -797,7 +797,7 @@ class SendName extends Component {
               <dt>{this.context.t('sendNameAddrReceivingName')}</dt>
               <dd>{claimDetails.nameReceiveAddr}</dd>
               <dt>{this.context.t('sendNameAddrInThisWallet')}</dt>
-              <dd>{this.state.claimIsOwnAddress ? 'Yes' : 'No'}</dd>
+              <dd>{this.state.claimIsOwnAddress ? this.context.t('yes') : this.context.t('no')}</dd>
               <dt>{this.context.t('sendNameSellerPaymentAddress')}</dt>
               <dd>{claimDetails.fundingAddr}</dd>
               <dt>{this.context.t('sendNameFieldPrice')}</dt>

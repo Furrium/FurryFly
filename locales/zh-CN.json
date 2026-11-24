@@ -2198,5 +2198,18 @@
   "featureNeedsChainSync": "区块链同步完成前无法使用此功能。同步进度可在侧边栏底部查看。",
   "sendTypeLabel": "发送类型",
   "sendNameFinalizeTo": "域名将最终转给 %s。",
-  "sendNameUnknownRecipient": "未知的接收方"
+  "sendNameUnknownRecipient": "未知的接收方",
+  "synced": "已同步",
+  "checked": "检查于",
+  "ofTotal": "共 %s 页",
+  "proofCreatingProofs": "正在生成证明",
+  "proofKeyLocalOnly": "它们完全离线使用，不会离开你的电脑。",
+  "auctionGraphTba": "待定",
+  "auctionGraphCurrentBlock": "当前区块：",
+  "auctionPhaseBidding": "竞价期",
+  "auctionPhaseReveal": "揭示期",
+  "walletSyncingProgress": "正在同步钱包…（%s%）",
+  "exchangeOldBidsStillBuy": "持有旧出价的人仍可以 ",
+  "exchangeOldBidsSuffix": " 的价格购买此域名！",
+  "domainDataNone": "无"
 }

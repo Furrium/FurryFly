@@ -33,7 +33,7 @@ export default class Header extends Component {
             </div>
           </div>
           <div className="header__status">
-            Synced
+            {this.context.t('synced')}
           </div>
         </div>
       </div>

@@ -158,7 +158,7 @@ export default class StepPrivateKey extends Component {
               {t('proofPastePrivateKey')}
             </div>
             <div className="proof-modal__body-text">
-              These are used offline and never leave your computer.
+              {this.context.t('proofKeyLocalOnly')}
               <br />
             </div>
 
@@ -242,7 +242,7 @@ export default class StepPrivateKey extends Component {
             onClick={this.onSubmit}
             disabled={!this.canGoToNext()}
           >
-            Next
+            {this.context.t('next')}
           </button>
         </div>
       </div>

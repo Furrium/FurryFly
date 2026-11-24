@@ -4,6 +4,7 @@ import './walletsync.scss';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import * as walletActions from '../../ducks/walletActions';
+import { I18nContext } from '../../utils/i18n';
 
 @connect(
   (state) => ({
@@ -12,6 +13,8 @@ import * as walletActions from '../../ducks/walletActions';
   })
 )
 export default class WalletSync extends Component {
+  static contextType = I18nContext;
+
   static propTypes = {
     walletSync: PropTypes.bool.isRequired,
     walletSyncProgress: PropTypes.number.isRequired,
@@ -25,7 +28,7 @@ export default class WalletSync extends Component {
     return (
       <Modal className="wallet-sync__wrapper" onClose={() => ({})}>
         <div className="wallet-sync__progress">
-          Syncing wallet... ({this.props.walletSyncProgress}%)
+          {this.context.t('walletSyncingProgress', this.props.walletSyncProgress)}
         </div>
       </Modal>
     );

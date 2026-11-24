@@ -77,14 +77,14 @@ export default class StepHnsAddress extends Component {
             className="proof-modal__footer__secondary-cta"
             onClick={this.props.onBack}
           >
-            Back
+            {this.context.t('back')}
           </button>
           <button
             className="extension_cta_button create_cta"
             onClick={this.onSubmit}
             disabled={this.state.hnsAddr.length === 0}
           >
-            Next
+            {this.context.t('next')}
           </button>
         </div>
       </div>

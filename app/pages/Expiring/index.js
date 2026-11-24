@@ -350,7 +350,7 @@ class Expiring extends Component {
             </p>
             {this.state.channelExpiringCheckedAt && (
               <p className="expiring-page__checked-at">
-                Checked {moment(this.state.channelExpiringCheckedAt).format('HH:mm:ss')} · {this.state.channelExpiringScope}
+                {t('checked')} {moment(this.state.channelExpiringCheckedAt).format('HH:mm:ss')} · {this.state.channelExpiringScope}
               </p>
             )}
           </div>
@@ -359,7 +359,7 @@ class Expiring extends Component {
             disabled={this.state.channelExpiringLoading}
             onClick={() => this.fetchChannelExpiringNames()}
           >
-            Refresh
+            {t('refresh')}
           </button>
         </div>
         <Table className="expiring-page__table">
@@ -386,7 +386,7 @@ class Expiring extends Component {
             </p>
             {this.state.globalExpiringCheckedAt && (
               <p className="expiring-page__checked-at">
-                Checked {moment(this.state.globalExpiringCheckedAt).format('HH:mm:ss')} · {this.state.globalExpiringScope}
+                {t('checked')} {moment(this.state.globalExpiringCheckedAt).format('HH:mm:ss')} · {this.state.globalExpiringScope}
                 {this.state.globalExpiringIndexer?.status ? ` · ${this.state.globalExpiringIndexer.status}` : ''}
               </p>
             )}
@@ -416,7 +416,7 @@ class Expiring extends Component {
             </p>
             {this.state.recentlyExpiredCheckedAt && (
               <p className="expiring-page__checked-at">
-                Checked {moment(this.state.recentlyExpiredCheckedAt).format('HH:mm:ss')} · {this.state.recentlyExpiredScope}
+                {t('checked')} {moment(this.state.recentlyExpiredCheckedAt).format('HH:mm:ss')} · {this.state.recentlyExpiredScope}
                 {this.state.recentlyExpiredIndexer?.status ? ` · ${this.state.recentlyExpiredIndexer.status}` : ''}
               </p>
             )}
@@ -447,7 +447,7 @@ class Expiring extends Component {
             </p>
             {this.state.communityExpiringCheckedAt && (
               <p className="expiring-page__checked-at">
-                Checked {moment(this.state.communityExpiringCheckedAt).format('HH:mm:ss')} · {this.state.communityExpiringScope}
+                {t('checked')} {moment(this.state.communityExpiringCheckedAt).format('HH:mm:ss')} · {this.state.communityExpiringScope}
               </p>
             )}
           </div>

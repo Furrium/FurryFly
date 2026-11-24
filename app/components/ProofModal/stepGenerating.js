@@ -66,7 +66,7 @@ export default class StepGenerating extends Component {
         />
         <div className="proof-modal__content">
           <Submittable onSubmit={this.onSubmit}>
-            <div className="proof-modal__header_text">Creating Proofs</div>
+            <div className="proof-modal__header_text">{this.context.t('proofCreatingProofs')}</div>
             <div className="proof-modal__body-text">
               {this.context.t('proofGeneratingHint')}
             </div>
@@ -106,7 +106,7 @@ export default class StepGenerating extends Component {
               )
             }
           >
-            Next
+            {this.context.t('next')}
           </button>
         </div>
       </div>

@@ -196,8 +196,10 @@ export default function showMainWindow() {
 
   const window = new electron.BrowserWindow({
     show: false,
-    width: 1024,
-    height: 728,
+    // Outer window size, so these numbers include the Windows frame. Adding
+    // useContentSize would make them the page area instead and grow the window.
+    width: 1280,
+    height: 810,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,

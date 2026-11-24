@@ -627,7 +627,7 @@ class SendName extends Component {
               <span>
                 {this.state.resolvingTransferTo
                   ? this.context.t('sendNameReadingRecipient')
-                  : `Domain will finalize to ${this.state.transferTo || 'unknown recipient'}.`}
+                  : this.context.t('sendNameFinalizeTo', this.state.transferTo || this.context.t('sendNameUnknownRecipient'))}
               </span>
             </div>
             {this.renderPriceAndNote()}

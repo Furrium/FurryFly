@@ -2195,5 +2195,8 @@
   "sendNameNoteHint": "仅保存在 FurryFly 历史和导出的声明文件中，不会写入链上。",
   "sendNameLoadFile": "载入文件",
   "sendNameBulkTitle": "批量转移域名",
-  "featureNeedsChainSync": "区块链同步完成前无法使用此功能。同步进度可在侧边栏底部查看。"
+  "featureNeedsChainSync": "区块链同步完成前无法使用此功能。同步进度可在侧边栏底部查看。",
+  "sendTypeLabel": "发送类型",
+  "sendNameFinalizeTo": "域名将最终转给 %s。",
+  "sendNameUnknownRecipient": "未知的接收方"
 }

@@ -2195,5 +2195,8 @@
   "sendNameNoteHint": "Saved in FurryFly history and the exported claim file only. Not written on-chain.",
   "sendNameLoadFile": "Load File",
   "sendNameBulkTitle": "Bulk Transfer Names",
-  "featureNeedsChainSync": "This feature is unavailable until the blockchain finishes syncing. You can follow the progress at the bottom of the sidebar."
+  "featureNeedsChainSync": "This feature is unavailable until the blockchain finishes syncing. You can follow the progress at the bottom of the sidebar.",
+  "sendTypeLabel": "Send type",
+  "sendNameFinalizeTo": "Domain will finalize to %s.",
+  "sendNameUnknownRecipient": "an unknown recipient"
 }

@@ -215,18 +215,15 @@ class SendModal extends Component {
     });
   }
 
-  renderSend() {
+  // Fields only. The card, header, type switch, CTA and progress bar live in
+  // renderSendForm so that sending HNS and sending a name share one shell.
+  renderHnsFields() {
     const {selectedGasOption, amount} = this.state;
     const {t} = this.context;
-    const {isValid} = this.validate();
 
     return (
-      <div className="send__container">
-        <div className="send__content">
-          <div className="send__header">
-            <div className="send__title">{t('sendTitle')}</div>
-          </div>
-          <Alert type="error" message={this.state.errorMessage} />
+      <>
+        <Alert type="error" message={this.state.errorMessage} />
           <div className="send__to">
             <div className="send__label">{t('sendToLabel')}</div>
             <AddressInput
@@ -293,24 +290,7 @@ class SendModal extends Component {
               </div>
             </div>
           </div>
-        </div>
-        <div className="send__actions">
-          <button
-            className="send__cta-btn"
-            key="continue"
-            onClick={this.onClickContinue}
-            disabled={!isValid}
-          >
-            {t('next')}
-          </button>
-        </div>
-        <div className="send__progress-bar">
-          <div className="send__progress-bar__dot" />
-          <div className={c('send__progress-bar__dot', {
-            'send__progress-bar__dot--empty': !this.state.isConfirming,
-          })} />
-        </div>
-      </div>
+      </>
     );
   }
 
@@ -443,52 +423,85 @@ class SendModal extends Component {
   }
 
   renderContent() {
-    if (!this.state.isConfirming && !this.state.transactionSent) {
-      if (this.state.assetMode === 'name') {
-        return (
-          <>
-            {this.renderAssetTabs()}
-            <SendName
-              mode={this.state.nameMode}
-              setMode={this.setNameMode}
-            />
-          </>
-        );
-      }
-
-      return (
-        <>
-          {this.renderAssetTabs()}
-          {this.renderSend()}
-        </>
-      );
-    }
-
     if (this.state.transactionSent) {
       return this.renderTransactionSent();
     }
     if (this.state.isConfirming) {
       return this.renderConfirm();
     }
-    return this.renderSend();
+    return this.renderSendForm();
   }
 
-  renderAssetTabs() {
+  // One card for both asset types. The type switch sits inside it, so what to send is a
+  // field of the form rather than a separate screen with its own heading and buttons.
+  renderSendForm() {
+    const {assetMode} = this.state;
     const {t} = this.context;
+
     return (
-      <div className="send__asset-tabs">
-        <button
-          className={this.state.assetMode === 'hns' ? 'send__asset-tab send__asset-tab--active' : 'send__asset-tab'}
-          onClick={() => this.setAssetMode('hns')}
-        >
-          {t('sendHnsTab')}
-        </button>
-        <button
-          className={this.state.assetMode === 'name' ? 'send__asset-tab send__asset-tab--active' : 'send__asset-tab'}
-          onClick={() => this.setAssetMode('name')}
-        >
-          {t('sendNameTab')}
-        </button>
+      <div className="send__container">
+        <div className="send__content">
+          <div className="send__header">
+            <div className="send__title">{t('sendTitle')}</div>
+          </div>
+          {this.renderAssetTypeSwitch()}
+          {assetMode === 'name'
+            ? (
+              <SendName
+                mode={this.state.nameMode}
+                setMode={this.setNameMode}
+              />
+            )
+            : this.renderHnsFields()}
+        </div>
+        {/* The name flow carries its own per-step buttons and its own two-step progress,
+            so the shared CTA and progress bar stay with the HNS flow. */}
+        {assetMode === 'hns' && (
+          <>
+            <div className="send__actions">
+              <button
+                className="send__cta-btn"
+                key="continue"
+                onClick={this.onClickContinue}
+                disabled={!this.validate().isValid}
+              >
+                {t('next')}
+              </button>
+            </div>
+            <div className="send__progress-bar">
+              <div className="send__progress-bar__dot" />
+              <div className={c('send__progress-bar__dot', {
+                'send__progress-bar__dot--empty': !this.state.isConfirming,
+              })} />
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // A segmented control inside the card, not two large buttons floating above it: the
+  // asset type is part of the form, and a control on the card's own surface reads that way.
+  renderAssetTypeSwitch() {
+    const {t} = this.context;
+    const item = (mode, labelKey) => (
+      <button
+        key={mode}
+        type="button"
+        className={c('send__type-switch__item', {
+          'send__type-switch__item--active': this.state.assetMode === mode,
+        })}
+        aria-pressed={this.state.assetMode === mode}
+        onClick={() => this.setAssetMode(mode)}
+      >
+        {t(labelKey)}
+      </button>
+    );
+
+    return (
+      <div className="send__type-switch" role="group" aria-label={t('sendTypeLabel')}>
+        {item('hns', 'sendHnsTab')}
+        {item('name', 'sendNameTab')}
       </div>
     );
   }

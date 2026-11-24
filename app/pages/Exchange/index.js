@@ -1488,7 +1488,7 @@ export class Exchange extends Component {
             </div>
           </div>
           {this.renderMarketplaceFilters(marketplaceAuctions.length)}
-          <Table className="exchange-table">
+          <Table className="exchange-table exchange-table--marketplace">
             <Header />
             {marketplaceView.showInitialLoading && (
               <TableRow>
@@ -2340,7 +2340,7 @@ export class Exchange extends Component {
         <TableItem>{formatName(auction.name)}</TableItem>
         <TableItem>{currentPriceText}</TableItem>
         <TableItem>{this.renderMarketplaceMode(auction)}</TableItem>
-        <TableItem>
+        <TableItem className="exchange-table__actions-cell">
           {
             !auction.spendingStatus && (
               <div className="exchange__auction-row-buttons">

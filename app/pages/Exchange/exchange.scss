@@ -294,8 +294,32 @@
   margin-left: 0.2rem;
 }
 
+// The marketplace rows end in three bordered action chips. Every table cell takes an equal
+// share of the width and clips its overflow, so the chips ran past the row and the last one
+// was cut off - the cell measured 184px against 217px of content. The column's header cell
+// is empty, which is what makes it safe to give this column a fixed share of its own.
+// 14.5rem matches the action column of the listings table above.
+.exchange-table--marketplace {
+  &.table {
+    .table__header__item:last-of-type,
+    .table__row__item:last-of-type {
+      flex: 0 0 14.5rem;
+      min-width: 0;
+      padding-left: .5rem;
+    }
+  }
+}
+
 .exchange__auction-row-buttons {
   display: flex;
+  flex-wrap: wrap;
+  gap: .3rem;
+  justify-content: flex-end;
+
+  // The chips keep their own width and wrap instead of shrinking into unreadable stubs.
+  .bid-action__link {
+    flex: 0 0 auto;
+  }
 }
 
 .exchange-deeplink-loading {

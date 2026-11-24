@@ -16,7 +16,6 @@
   "auctionSummaryRetry": "Retry summary",
   "auctionSummaryScope": "Bids, reveals and finished auctions, matching Transactions. Includes unverified registration estimates; not all of this is refundable.",
   "balanceAllCovenantLocks": "Total locked in auctions and names",
-  "balanceGuideLink": "Understand these balances",
   "balanceSpendableNow": "Spendable now",
   "balanceCurrentlyLocked": "Currently locked",
   "balanceDetails": "Balance details",
@@ -2212,5 +2211,10 @@
   "exchangeOldBidsStillBuy": "Anyone with the old bids can still buy this name at ",
   "exchangeOldBidsSuffix": "!",
   "domainDataNone": "NULL",
-  "loginBrandTagline": "Handshake names, auctions and the marketplace in one wallet."
+  "loginBrandTagline": "Handshake names, auctions and the marketplace in one wallet.",
+  "balanceSyncReason": "Syncing the blockchain. The balance becomes available when sync completes.",
+  "overviewReceiveAddress": "Current receiving address",
+  "overviewRotateAddress": "Rotate",
+  "overviewRotatingAddress": "Rotating…",
+  "overviewShowQr": "QR code"
 }

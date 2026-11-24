@@ -2,10 +2,9 @@ import test from 'tape';
 import {applyMiddleware, combineReducers, createStore} from 'redux';
 import thunk from 'redux-thunk';
 import walletReducer, {INVALIDATE_WALLET_REQUESTS, SET_WALLET, SET_BALANCE} from '../walletReducer';
-import BalanceSummary, {balanceSnapshotReady, balanceGuideUrl} from '../../pages/Overview/BalanceSummary';
+import BalanceSummary, {balanceSnapshotReady} from '../../pages/Overview/BalanceSummary';
 import React from 'react';
 import {mount} from 'enzyme';
-import {shell} from '../../renderer/electron';
 import {I18nContext} from '../../utils/i18n';
 import {balanceReadiness} from '../../utils/balanceReadiness';
 import AuctionSummaryStatus, {auctionSummaryTotal} from '../../pages/Overview/AuctionSummaryStatus';
@@ -16,7 +15,6 @@ import {sendRedeemAll} from '../names';
 import walletStatsReducer, {
   fetchWalletStats,
 } from '../walletStats';
-const BRAND = require('../../constants/branding');
 
 const stats = (redeemable, registerable = 0, revealable = 0) => ({
   lockedBalance: {
@@ -54,33 +52,25 @@ test('auction summary status distinguishes loading, slow, failed, waiting and kn
   t.end();
 });
 
-test('balance guide is localized, accessible while loading, and opens only the fixed external URL', t => {
-  for (const [locale, prefix] of [['en-US', ''], ['zh-CN', '/zh'],
-    ['ru-RU', ''], ['fr-FR', ''], ['custom', ''], ['../../wallet-secret', ''], [undefined, '']]) {
-    t.equal(balanceGuideUrl(locale), `${BRAND.siteUrl}${prefix}/docs/wallet-balances/`);
-  }
-  const original = shell.openExternal;
-  const opened = [];
-  shell.openExternal = url => opened.push(url);
-  let wrapper;
+test('balance details show only the three totals, with no external guide link', t => {
+  const wrapper = mount(<I18nContext.Provider value={{t: key => key}}>
+    <BalanceSummary locale="zh-CN" walletName="private-wallet" />
+  </I18nContext.Provider>);
   try {
-    wrapper = mount(<I18nContext.Provider value={{t: key => key}}>
-      <BalanceSummary locale="zh-CN" walletName="private-wallet" balanceReady={false} />
-    </I18nContext.Provider>);
-    const link = wrapper.find('a.overview__balance-guide');
-    t.equal(link.length, 1, 'one visible native keyboard-accessible link');
-    t.equal(wrapper.find('details').prop('open'), undefined, 'details remain collapsed by default');
-    t.equal(link.parents('details').length, 0, 'help is visible without expanding details');
-    t.equal(link.text(), 'balanceGuideLink', 'localized label');
-    let prevented = false;
-    link.simulate('click', {preventDefault: () => {prevented = true;}});
-    t.ok(prevented, 'does not navigate the wallet renderer');
-    t.deepEqual(opened, [`${BRAND.siteUrl}/zh/docs/wallet-balances/`], 'opens once without wallet data');
-    wrapper.setProps({value: {t: key => key}, children: <BalanceSummary locale="zh-CN" balanceReady={false} />});
-    t.equal(wrapper.find('a').prop('href'), balanceGuideUrl('zh-CN'), 'updates with selected locale');
+    t.equal(wrapper.find('a.overview__balance-guide').length, 0, 'guide link is gone');
+    t.equal(wrapper.find('details').length, 0, 'disclosure is not a native details element');
+    const terms = wrapper.find('dl dt');
+    t.equal(terms.length, 3, 'only the three totals remain');
+    t.deepEqual(terms.map(node => node.text()), [
+      'balanceAllCovenantLocks',
+      'balanceConfirmedTotal',
+      'balanceCurrentTotal',
+    ]);
+    t.equal(wrapper.find('.overview__balance-details__body--open').length, 0, 'collapsed by default');
+    wrapper.find('button.overview__balance-details__summary').simulate('click');
+    t.equal(wrapper.find('.overview__balance-details__body--open').length, 1, 'expands on click');
   } finally {
-    wrapper?.unmount();
-    shell.openExternal = original;
+    wrapper.unmount();
   }
   t.end();
 });

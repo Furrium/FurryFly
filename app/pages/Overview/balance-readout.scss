@@ -1,0 +1,257 @@
+@import '../../variables';
+
+// Seven-segment balance readout and the controls that sit with it.
+
+.lcd-number {
+  display: inline-flex;
+  align-items: flex-end;
+  font-family: 'DSEG7 Classic', monospace;
+  font-size: 2.6rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--fns-text);
+}
+
+// One digit window. The strip inside holds 0-9 twice and is translated so the wanted
+// digit lands here; the overflow is what makes it read as a wheel rather than a swap.
+.lcd-reel {
+  display: block;
+  height: 1em;
+  overflow: hidden;
+}
+
+.lcd-reel__strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(0);
+  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  // Columns settle left to right, so the number resolves instead of snapping.
+  transition-delay: var(--lcd-delay, 0ms);
+}
+
+.lcd-reel__cell {
+  display: block;
+  height: 1em;
+  line-height: 1em;
+  text-align: center;
+}
+
+// Separators do not roll: the thousands comma and the decimal point stay put.
+.lcd-number__static {
+  display: inline-block;
+  line-height: 1;
+}
+
+.lcd-error {
+  font-family: 'DSEG14 Classic', monospace;
+  font-size: 2.2rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--fns-danger);
+}
+
+.overview__hero-amount {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.overview__hero-unit {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--fns-text-muted);
+}
+
+.overview__hero-amount--error {
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.overview__hero-error-reason {
+  max-width: 24rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--fns-text-secondary);
+}
+
+/* ------------------------------------------------------------ receiving address */
+
+.overview__receive {
+  margin-top: 1.1rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-lg, 0.75rem);
+  background-color: rgb(var(--fns-text-rgb) / 0.04);
+}
+
+.overview__receive-kicker {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fns-text-muted);
+}
+
+.overview__receive-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+// Deliberately the normal face: an address is copied and checked character by character,
+// and the display face would make that harder, not easier.
+.overview__receive-address {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: 0.8rem;
+  color: var(--fns-text-secondary);
+}
+
+.overview__receive-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.overview__receive-btn {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--fns-border);
+  border-radius: var(--fns-radius-pill, 999px);
+  background-color: transparent;
+  color: var(--fns-text-secondary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition:
+    background-color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    border-color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease),
+    color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+
+  &:hover:not(:disabled) {
+    border-color: var(--fns-brand);
+    background-color: rgb(var(--fns-brand-rgb) / 0.12);
+    color: var(--fns-brand);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.overview__receive-error {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--fns-danger);
+}
+
+.overview__qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1rem 0 0.5rem;
+}
+
+.overview__qr-code {
+  padding: 0.75rem;
+  border-radius: var(--fns-radius-md, 0.5rem);
+  // The code is drawn dark-on-transparent, so it needs a light plate behind it whatever
+  // the theme is doing.
+  background-color: #ffffff;
+}
+
+.overview__qr-address {
+  max-width: 22rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  word-break: break-all;
+  color: var(--fns-text-secondary);
+}
+
+/* --------------------------------------------------------------- balance details */
+
+.overview__balance-details {
+  flex-basis: 100%;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.overview__balance-details__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fns-text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--fns-text-secondary);
+  }
+}
+
+.overview__balance-details__chevron {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+
+  &--open {
+    transform: rotate(-135deg) translateY(-1px);
+  }
+}
+
+// 0fr -> 1fr animates an intrinsic height without measuring it in JS, and the inner
+// element carries the overflow so the rows collapse cleanly.
+.overview__balance-details__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--fns-motion-base, 220ms) var(--fns-motion-ease-out, ease),
+    opacity var(--fns-motion-base, 220ms) var(--fns-motion-ease-out, ease);
+
+  &--open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem 1rem;
+    margin: 0.6rem 0 0;
+  }
+
+  dt {
+    color: var(--fns-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    text-align: right;
+    color: var(--fns-text);
+  }
+}
+
+.overview__balance-details__inner {
+  overflow: hidden;
+}

@@ -17,6 +17,7 @@ import { MARKETPLACE_STATUS } from '../../utils/marketplaceRequest';
 import { I18nContext } from '../../utils/i18n';
 import {fetchWalletStats} from '../../ducks/walletStats';
 import BalanceSummary from './BalanceSummary';
+import walletClient from '../../utils/walletClient';
 import AuctionSummaryStatus from './AuctionSummaryStatus';
 import {balanceReadiness} from '../../utils/balanceReadiness';
 import './overview.scss';
@@ -73,6 +74,7 @@ const ACTIVE_LISTING_STATUSES = new Set([
     marketplaceStatus: state.exchange.marketplaceStatus,
     marketplaceError: state.exchange.marketplaceError,
     walletStats: state.walletStats,
+    receiveAddress: state.wallet.receiveAddress || '',
   }),
   (dispatch) => ({
     fetchWallet: () => dispatch(walletActions.fetchWallet()),
@@ -399,8 +401,20 @@ export default class Overview extends Component {
     );
   }
 
+  // Rotation belongs to the page: it is the piece that already holds the store, and the
+  // new address arrives with the wallet snapshot rather than as a return value.
+  onRotateAddress = async () => {
+    await walletClient.generateReceivingAddress();
+    await this.props.fetchWallet();
+  };
+
   renderHero() {
-    return <BalanceSummary {...this.props} walletName={this.getWalletDisplayName()} onRetryStats={() => this.updateStats()} />;
+    return <BalanceSummary
+      {...this.props}
+      walletName={this.getWalletDisplayName()}
+      onRetryStats={() => this.updateStats()}
+      onRotateAddress={this.onRotateAddress}
+    />;
   }
 
   renderActionCenter(items) {

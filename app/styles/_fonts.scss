@@ -1,0 +1,26 @@
+// Seven-segment display faces for the balance readout.
+//
+// DSEG by keshikan, SIL Open Font License 1.1. The full licence ships next to the font
+// files in app/assets/fonts/DSEG-LICENSE.txt; the licence reserves the name "DSEG", so the
+// families are declared under the names the files themselves carry and are not modified.
+//
+// DSEG7 draws digits, which is what the balance needs. DSEG14 is the fourteen-segment
+// face, used for the letters in the ERROR state because DSEG7 has no N, R or O.
+//
+// font-display: block rather than swap: a fallback numeral flashing before the right one
+// would read as a broken counter, and the readout is decorative enough to wait for.
+@font-face {
+  font-family: 'DSEG7 Classic';
+  src: url('../assets/fonts/DSEG7Classic-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'DSEG14 Classic';
+  src: url('../assets/fonts/DSEG14Classic-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}

@@ -16,7 +16,6 @@
   "auctionSummaryRetry": "重试摘要",
   "auctionSummaryScope": "出价、揭示和已结束的拍卖，与交易页面一致。包含未经验证的注册估算；并非全部金额都可退回。",
   "balanceAllCovenantLocks": "拍卖和域名中锁定的总额",
-  "balanceGuideLink": "了解这些余额",
   "balanceSpendableNow": "当前可用",
   "balanceCurrentlyLocked": "当前锁定",
   "balanceDetails": "余额详情",
@@ -2212,5 +2211,10 @@
   "exchangeOldBidsStillBuy": "持有旧出价的人仍可以 ",
   "exchangeOldBidsSuffix": " 的价格购买此域名！",
   "domainDataNone": "无",
-  "loginBrandTagline": "集 Handshake 域名、竞拍与市场于一体的钱包。"
+  "loginBrandTagline": "集 Handshake 域名、竞拍与市场于一体的钱包。",
+  "balanceSyncReason": "正在同步区块链，余额将在同步完成后可用。",
+  "overviewReceiveAddress": "当前接收地址",
+  "overviewRotateAddress": "轮换",
+  "overviewRotatingAddress": "轮换中…",
+  "overviewShowQr": "QR 码"
 }

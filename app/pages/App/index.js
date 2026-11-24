@@ -186,7 +186,9 @@ class App extends Component {
           />}
           <Route
             path="/login"
-            render={this.uninitializedWrapper(LoginScreen, true, true)}
+            // full: the unlock screen is a two-column page now, not the 400px dialog
+            // the onboarding wrapper falls back to.
+            render={this.uninitializedWrapper(LoginScreen, true, true, false, true)}
           />
           <Route
             path="/funding-options"

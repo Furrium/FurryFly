@@ -146,3 +146,42 @@ test('the chain directory falls back to its target when no legacy path exists', 
 test('a null chain directory stays null rather than inventing a path', () => {
   assert.equal(resolveChainDir({target: null, legacyDirs: ['ignored'], log: silent}), null);
 });
+
+test('moving the chain directory clears the emptied outer directory', () => {
+  const f = fixture();
+  try {
+    fs.mkdirSync(f.at('E', 'FurryFly', 'hsd_data'), {recursive: true});
+    fs.writeFileSync(f.at('E', 'FurryFly', 'hsd_data', 'chain.dat'), 'blocks');
+
+    const used = resolveChainDir({
+      target: f.at('E', 'Transfur', 'hsd_data'),
+      legacyDirs: [f.at('E', 'FurryFly', 'hsd_data')],
+      log: silent,
+    });
+
+    assert.equal(used, path.resolve(f.at('E', 'Transfur', 'hsd_data')));
+    assert.equal(fs.readFileSync(f.at('E', 'Transfur', 'hsd_data', 'chain.dat'), 'utf8'), 'blocks');
+    assert.equal(fs.existsSync(f.at('E', 'FurryFly')), false, 'the empty outer directory is gone');
+  } finally {
+    f.cleanup();
+  }
+});
+
+test('an outer directory that still holds something is kept', () => {
+  const f = fixture();
+  try {
+    fs.mkdirSync(f.at('E', 'FurryFly', 'hsd_data'), {recursive: true});
+    fs.writeFileSync(f.at('E', 'FurryFly', 'notes.txt'), 'mine');
+
+    resolveChainDir({
+      target: f.at('E', 'Transfur', 'hsd_data'),
+      legacyDirs: [f.at('E', 'FurryFly', 'hsd_data')],
+      log: silent,
+    });
+
+    assert.equal(fs.existsSync(f.at('E', 'FurryFly')), true, 'a non-empty directory is left alone');
+    assert.equal(fs.readFileSync(f.at('E', 'FurryFly', 'notes.txt'), 'utf8'), 'mine');
+  } finally {
+    f.cleanup();
+  }
+});

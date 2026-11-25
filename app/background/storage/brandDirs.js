@@ -76,6 +76,21 @@ function resolveUserDataDir({appDataPath, targetName, legacyNames = [], log = no
   return target;
 }
 
+// The chain directory is a subdirectory of a directory named after the product, so moving
+// it leaves that outer directory behind as an empty shell. rmdirSync only succeeds on an
+// empty directory, which is exactly the condition wanted here: a root that still holds
+// anything at all is left untouched, and so is one that cannot be removed.
+function pruneEmptyParent(dir, log = noop) {
+  const parent = path.dirname(path.resolve(dir));
+
+  try {
+    fs.rmdirSync(parent);
+    log(`[branding] Removed the empty directory ${parent}.`);
+  } catch (error) {
+    // Not empty, already gone, or not ours to remove.
+  }
+}
+
 // Same walk for the node prefix, which lives wherever chainDir points rather than under
 // appData. The paths are absolute, so the move is a same-volume rename whenever the
 // preferred drive is present, and a no-op when it is not.
@@ -93,7 +108,13 @@ function resolveChainDir({target, legacyDirs = [], log = noop}) {
       continue;
     }
 
-    return migrateDirectory({target, legacy, log});
+    const used = migrateDirectory({target, legacy, log});
+
+    if (used === path.resolve(target)) {
+      pruneEmptyParent(legacy, log);
+    }
+
+    return used;
   }
 
   return target;

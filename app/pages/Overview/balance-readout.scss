@@ -95,6 +95,32 @@
   background-color: rgb(var(--fns-text-rgb) / 0.04);
 }
 
+// Shortcuts sitting directly under the balance: the primary action is filled and the
+// others are outlined, so the row reads as one suggestion with two alternatives rather
+// than three equal buttons.
+//
+// Both extend the shared placeholders instead of restating the pill. The sizes are
+// reduced because the form-sized defaults are built for a dialog's footer, and these sit
+// inside a card where they would otherwise dominate the number above them.
+.overview__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.overview__hero-action--primary {
+  @extend %btn-primary;
+  padding: 0.5rem 1.15rem;
+  font-size: 0.8rem;
+}
+
+.overview__hero-action--secondary {
+  @extend %btn-secondary;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.8rem;
+}
+
 .overview__receive-head {
   display: flex;
   align-items: baseline;

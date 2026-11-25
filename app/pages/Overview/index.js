@@ -415,6 +415,13 @@ export default class Overview extends Component {
       onRetryStats={() => this.updateStats()}
       onRotateAddress={this.onRotateAddress}
       onManageAddresses={() => this.go('/receive/addresses')}
+      // One filled action and two outlined ones: the reference language keeps a single
+      // strong action per surface, and sending is the one this screen exists to start.
+      quickActions={[
+        {id: 'send', kind: 'primary', labelKey: 'headingSend', onClick: () => this.go('/send')},
+        {id: 'domains', labelKey: 'navGroupDomains', onClick: () => this.go('/domain_manager')},
+        {id: 'market', labelKey: 'headingExchange', onClick: () => this.go('/exchange')},
+      ]}
     />;
   }
 

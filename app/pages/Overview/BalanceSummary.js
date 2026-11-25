@@ -49,6 +49,21 @@ export default function BalanceSummary(props) {
       <span className="overview__hero-meta">{props.walletName} · {t(kind)}</span>
       {ready && props.showUsdValue && props.hnsPrice?.value > 0 &&
         <span className="overview__hero-meta">~${(props.spendableBalance / 1e6 * props.hnsPrice.value).toFixed(2)} {props.hnsPrice.currency || 'USD'}</span>}
+      {/* Shortcuts for what is done from this screen. They arrive as props because this
+          component is mounted without a router in its spec, so it cannot navigate itself. */}
+      {props.quickActions?.length > 0 &&
+        <div className="overview__hero-actions">
+          {props.quickActions.map(action => (
+            <button
+              key={action.id}
+              type="button"
+              className={`overview__hero-action--${action.kind || 'secondary'}`}
+              onClick={action.onClick}
+            >
+              {t(action.labelKey)}
+            </button>
+          ))}
+        </div>}
       <ReceiveAddressCard
         address={props.receiveAddress}
         onRotate={props.onRotateAddress}

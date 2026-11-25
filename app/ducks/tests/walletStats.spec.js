@@ -75,6 +75,44 @@ test('balance details show only the three totals, with no external guide link', 
   t.end();
 });
 
+test('quick actions render as buttons and report which one was pressed', t => {
+  const clicked = [];
+  const wrapper = mount(<I18nContext.Provider value={{t: key => key}}>
+    <BalanceSummary
+      locale="zh-CN"
+      walletName="private-wallet"
+      quickActions={[
+        {id: 'send', kind: 'primary', labelKey: 'headingSend', onClick: () => clicked.push('send')},
+        {id: 'domains', labelKey: 'navGroupDomains', onClick: () => clicked.push('domains')},
+      ]}
+    />
+  </I18nContext.Provider>);
+  try {
+    const buttons = wrapper.find('.overview__hero-actions button');
+    t.equal(buttons.length, 2, 'one button per action');
+    t.equal(wrapper.find('.overview__hero-action--primary').length, 1, 'exactly one filled action');
+    t.equal(wrapper.find('.overview__hero-action--secondary').length, 1, 'the rest are outlined');
+    t.deepEqual(buttons.map(node => node.text()), ['headingSend', 'navGroupDomains']);
+    buttons.at(0).simulate('click');
+    t.deepEqual(clicked, ['send'], 'the pressed action is the one reported');
+  } finally {
+    wrapper.unmount();
+  }
+  t.end();
+});
+
+test('no quick actions means no action row, not an empty one', t => {
+  const wrapper = mount(<I18nContext.Provider value={{t: key => key}}>
+    <BalanceSummary locale="zh-CN" walletName="private-wallet" />
+  </I18nContext.Provider>);
+  try {
+    t.equal(wrapper.find('.overview__hero-actions').length, 0, 'the row is absent');
+  } finally {
+    wrapper.unmount();
+  }
+  t.end();
+});
+
 function deferred() {
   let resolve;
   const promise = new Promise(r => { resolve = r; });

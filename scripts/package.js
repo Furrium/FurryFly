@@ -11,6 +11,13 @@ const babelBin = path.join(binDir, `babel${binExt}`);
 console.log(`Packaging from root directory ${rootDir}.`);
 
 function mkdirPFromRoot(dir, cb) {
+  // Emptied first, not just created.
+  //
+  // Webpack writes hashed asset filenames, so a rebuild produces new names and leaves the
+  // previous ones behind. They were then packaged into the app: dist/ held three-day-old
+  // SVGs carrying the product's previous name, unreferenced by anything but shipped
+  // anyway, and the same staleness applies to any renamed or deleted asset.
+  fs.rmSync(path.join(rootDir, dir), {recursive: true, force: true});
   fs.mkdir(path.join(rootDir, dir), {recursive: true}, (err) => {
     if (err) {
       throw err;

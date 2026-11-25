@@ -316,6 +316,29 @@ if (isPrimaryInstance) {
   const handleUnhandledStartupRejection = reason => showStartupErrorAndQuit(reason);
   process.on('unhandledRejection', handleUnhandledStartupRejection);
 
+  // A fault after startup used to leave nothing behind. Electron shows its own dialog for
+  // an uncaught exception, with the stack in it; the dialog is dismissed and the only
+  // record of what broke goes with it - which is how "it said a JavaScript error, then it
+  // was fine" becomes unanswerable.
+  //
+  // This is additive rather than a replacement: Electron keeps its own listener, so the
+  // dialog still appears and the process still behaves as before. All this does is write
+  // the stack somewhere that survives the dialog.
+  const recordMainProcessFault = (kind, error) => {
+    try {
+      const stack = error && error.stack ? error.stack : String(error);
+      require('fs').appendFileSync(
+        path.join(app.getPath('userData'), 'main-process-faults.log'),
+        `[${new Date().toISOString()}] ${kind}\n${stack}\n\n`,
+      );
+    } catch (recordError) {
+      // The recorder must never become the fault.
+    }
+  };
+
+  process.on('uncaughtException', error => recordMainProcessFault('uncaughtException', error));
+  process.on('unhandledRejection', reason => recordMainProcessFault('unhandledRejection', reason));
+
   async function waitForSmokeCondition(check, timeoutMs = 60000) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {

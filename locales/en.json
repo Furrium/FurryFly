@@ -251,7 +251,7 @@
   "getCoinWoT": "PGP Web of Trust",
   "getCoinWoTReq1": "Strong set email",
   "getCoinWoTReq2": "PGP keys",
-  "headingAddresses": "Addresses",
+  "headingAddresses": "Manage addresses",
   "headingBrowseDomains": "Browse Domains",
   "headingAddOns": "Add Ons",
   "headingAuctions": "Auctions",

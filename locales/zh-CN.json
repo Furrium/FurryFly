@@ -251,7 +251,7 @@
   "getCoinWoT": "PGP 信任网络",
   "getCoinWoTReq1": "Strong set 电子邮件",
   "getCoinWoTReq2": "PGP 密钥",
-  "headingAddresses": "地址",
+  "headingAddresses": "地址管理",
   "headingBrowseDomains": "浏览域名",
   "headingAddOns": "扩展",
   "headingAuctions": "拍卖",
@@ -2217,5 +2217,5 @@
   "overviewRotateAddress": "轮换",
   "overviewRotatingAddress": "轮换中…",
   "overviewShowQr": "QR 码",
-  "overviewManageAddresses": "管理地址"
+  "overviewManageAddresses": "地址管理"
 }

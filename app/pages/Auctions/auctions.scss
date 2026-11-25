@@ -1,0 +1,55 @@
+// Tab strip for the consolidated auction page.
+//
+// Flat and quiet: the tabs are a way to move between five views of the same subject, not
+// five primary actions, so they get tone and an underline rather than the pill treatment
+// the primary buttons use.
+.auctions__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--fns-border, #e2e2e2);
+}
+
+.auctions__tab {
+  position: relative;
+  padding: 0.55rem 0.9rem 0.7rem;
+  border: 0;
+  background: none;
+  color: var(--fns-text-secondary, #4a4a4a);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+
+  &:hover {
+    color: var(--fns-text, #16161a);
+  }
+
+  // Sits on the strip's own border, so the active tab reads as attached to its panel.
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0.5rem;
+    bottom: -1px;
+    left: 0.5rem;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: transparent;
+    transition: background var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+  }
+}
+
+.auctions__tab--active {
+  color: var(--fns-brand, #00a97e);
+
+  &::after {
+    background: var(--fns-brand, #00a97e);
+  }
+}
+
+.auctions__panel {
+  min-width: 0;
+}

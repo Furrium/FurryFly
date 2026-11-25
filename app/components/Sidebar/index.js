@@ -76,6 +76,87 @@ class Sidebar extends Component {
     );
   }
 
+  renderLink(to, label, {exactSend = false} = {}) {
+    const {t} = this.context;
+
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        isActive={exactSend
+          ? (match, location) => (
+            location.pathname === '/send'
+            && !new URLSearchParams(location.search || '').get('asset')
+          )
+          : undefined}
+        className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
+      >
+        {t(label)}
+      </NavLink>
+    );
+  }
+
+  renderGroup(id, label, items) {
+    const {t} = this.context;
+    const open = !!this.state.openGroups[id];
+
+    return (
+      <div className="sidebar__group" key={id}>
+        <button
+          type="button"
+          className="sidebar__section sidebar__section--clickable sidebar__group-toggle"
+          aria-expanded={open}
+          onClick={() => this.toggleGroup(id)}
+        >
+          <span>{t(label)}</span>
+          <span
+            className={`sidebar__group-chevron${open ? ' sidebar__group-chevron--open' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+        <div className="sidebar__group-body" data-open={open ? 'true' : 'false'}>
+          <div className="sidebar__actions">
+            {items.map(item => this.renderLink(item.to, item.label, item))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  state = {
+    // The group holding the current route starts open, so arriving from a link inside a
+    // collapsed group does not hide the page you just navigated to.
+    openGroups: this.groupsForPath(this.props.location.pathname),
+  };
+
+  groupsForPath(pathname) {
+    const groups = {hns: false, domains: false, extensions: false};
+
+    if (/^\/(account|send|receive)/.test(pathname)) groups.hns = true;
+    if (/^\/(domain_manager|domain|auctions|bids|watching|expiring|auction-basket|open-basket)/.test(pathname)) groups.domains = true;
+    if (/^\/(liquidity-swap|messages|addons)/.test(pathname)) groups.extensions = true;
+
+    return groups;
+  }
+
+  componentDidUpdate(prevProps) {
+    const before = this.groupsForPath(prevProps.location.pathname);
+    const now = this.groupsForPath(this.props.location.pathname);
+
+    for (const id of Object.keys(now)) {
+      if (now[id] && !before[id] && !this.state.openGroups[id]) {
+        this.setState(prev => ({openGroups: {...prev.openGroups, [id]: true}}));
+        return;
+      }
+    }
+  }
+
+  toggleGroup(id) {
+    this.setState(prev => ({
+      openGroups: {...prev.openGroups, [id]: !prev.openGroups[id]},
+    }));
+  }
+
   renderNav() {
     const {t} = this.context;
     const {walletId, walletInitialized, walletsDetails} = this.props;
@@ -94,101 +175,25 @@ class Sidebar extends Component {
       <React.Fragment>
         <div className="sidebar__section">{title}</div>
         <div className="sidebar__actions">
-          <NavLink
-            to="/overview"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingOverview')}
-          </NavLink>
-          <NavLink
-            to="/account"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingPortfolio')}
-          </NavLink>
-          <NavLink
-            to="/send"
-            isActive={(match, location) => (
-              location.pathname === '/send'
-              && !new URLSearchParams(location.search || '').get('asset')
-            )}
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingSend')}
-          </NavLink>
-          <NavLink
-            to="/receive/addresses"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingAddresses')}
-          </NavLink>
+          {this.renderLink('/overview', 'headingOverview')}
 
-          <NavLink
-            to="/domain_manager"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingDomainManager')}
-          </NavLink>
-        </div>
-        <div className="sidebar__section">{t('headingAuctions')}</div>
-        <div className="sidebar__actions">
-          <NavLink
-            to="/bids"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingYourBids')}
-          </NavLink>
-          <NavLink
-            to="/auction-basket"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingAuctionBasket')}
-          </NavLink>
-          <NavLink
-            to="/open-basket"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingOpenBasket')}
-          </NavLink>
-          <NavLink
-            to="/watching"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingWatching')}
-          </NavLink>
-          <NavLink
-            to="/expiring"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingExpiring')}
-          </NavLink>
-        </div>
-        <div className="sidebar__section">{t('headingAddOns')}</div>
-        <div className="sidebar__actions">
-          <NavLink
-            to="/exchange"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingShakedexMarketplace')}
-          </NavLink>
-          <NavLink
-            to="/messages"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingMessages')}
-          </NavLink>
-          <NavLink
-            to="/liquidity-swap"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingLiquiditySwap')}
-          </NavLink>
-          <NavLink
-            to="/addons"
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingMoreAddons')}
-          </NavLink>
+          {this.renderGroup('hns', 'navGroupHns', [
+            {to: '/account', label: 'headingPortfolio'},
+            {to: '/send', label: 'headingSend', exactSend: true},
+            {to: '/receive/addresses', label: 'headingAddresses'},
+          ])}
+
+          {this.renderGroup('domains', 'navGroupDomains', [
+            {to: '/domain_manager', label: 'headingDomainManager'},
+            {to: '/auctions', label: 'headingAuctions'},
+          ])}
+
+          {this.renderLink('/exchange', 'headingExchange')}
+
+          {this.renderGroup('extensions', 'navGroupExtensions', [
+            {to: '/liquidity-swap', label: 'headingLiquiditySwap'},
+            {to: '/messages', label: 'headingMessages'},
+          ])}
         </div>
       </React.Fragment>
     );

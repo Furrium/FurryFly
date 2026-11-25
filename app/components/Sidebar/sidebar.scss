@@ -97,6 +97,70 @@
     }
   }
 
+  // A group is a header you can fold away, not a page. Five auction views used to hold
+  // five sidebar rows of their own; they are tabs of one page now, and the groups keep
+  // the remaining destinations in the same order without the flat list growing.
+  &__group {
+    margin-bottom: 0.25rem;
+  }
+
+  &__group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    border: 0;
+    background: none;
+    font-family: inherit;
+    text-align: left;
+
+    &:hover {
+      color: var(--fns-text-secondary);
+    }
+  }
+
+  &__group-chevron {
+    flex: 0 0 auto;
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-right: 0.15rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    // Points right when folded, down when open.
+    transform: rotate(-45deg);
+    transition: transform var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+  }
+
+  &__group-chevron--open {
+    transform: rotate(45deg);
+  }
+
+  // 0fr -> 1fr animates to the content's natural height without hard-coding it, which
+  // matters here because the item count differs per group.
+  &__group-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--fns-motion-base, 220ms) var(--fns-motion-ease-out, ease);
+
+    > * {
+      overflow: hidden;
+    }
+
+    &[data-open='true'] {
+      grid-template-rows: 1fr;
+    }
+
+    .sidebar__actions {
+      margin-bottom: 0;
+    }
+
+    // Indented against the group header so the hierarchy is visible without a rule.
+    .sidebar__action {
+      padding-left: 1.75rem;
+    }
+  }
+
   &__footer {
     @extend %col-nowrap;
     padding: 0.3rem 0rem;

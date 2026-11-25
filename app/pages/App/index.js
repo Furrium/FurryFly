@@ -18,11 +18,9 @@ import Settings from '../Settings';
 import Auction from '../Auction';
 import DomainManager from '../DomainManager';
 import MyDomain from '../MyDomain';
-import YourBids from '../YourBids';
-import Watching from '../Watching';
-import Expiring from '../Expiring';
-import AuctionBasket from '../AuctionBasket';
-import OpenBasket from '../OpenBasket';
+// The five auction surfaces are composed by the Auctions page now, so only the hub is
+// routed here.
+import Auctions from '../Auctions';
 import SearchTLD from '../SearchTLD';
 import * as nodeActions from "../../ducks/node";
 import * as walletActions from '../../ducks/walletActions';
@@ -282,41 +280,89 @@ class App extends Component {
             path="/settings"
             render={this.routeRenderer('', Settings, false, false, '/overview')}
           />
+          {/* One auction page, five tabs. The narrower paths are registered first
+              because Switch takes the first match and every one of them starts with
+              /auctions. Registering real paths rather than a query parameter is what
+              keeps match.params.filterType populated for YourBids, which is wrapped in
+              withRouter and therefore reads the router context, not a match prop. */}
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/auctions/bids/:filterType?"
+            render={this.routeRenderer(t('headingAuctions'), Auctions)}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/auctions/basket"
+            render={this.routeRenderer(t('headingAuctions'), Auctions)}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/auctions/open-basket"
+            render={this.routeRenderer(t('headingAuctions'), Auctions)}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/auctions/watching"
+            render={this.routeRenderer(t('headingAuctions'), Auctions)}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/auctions/expiring"
+            render={this.routeRenderer(t('headingAuctions'), Auctions)}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/auctions"
+            render={this.routeRenderer(t('headingAuctions'), Auctions)}
+          />
+          {/* The five separate auction routes redirect into their tab. The filter is
+              carried across, because YourBids pushes /bids/BIDDING when the filter
+              changes and that navigation has to keep working. */}
           <ProtectedRoute
             isLocked={isLocked}
             wallets={wallets}
             path="/bids/:filterType?"
-            render={this.routeRenderer(t('headingYourBids'), YourBids)}
+            render={({match}) => (
+              <Redirect
+                to={`/auctions/bids${match.params.filterType ? `/${match.params.filterType}` : ''}`}
+              />
+            )}
           />
           <ProtectedRoute
             isLocked={isLocked}
             wallets={wallets}
             path="/auction-basket"
-            render={this.routeRenderer(t('headingAuctionBasket'), AuctionBasket)}
+            render={() => <Redirect to="/auctions/basket" />}
           />
           <ProtectedRoute
             isLocked={isLocked}
             wallets={wallets}
             path="/open-basket"
-            render={this.routeRenderer(t('headingOpenBasket'), OpenBasket)}
+            render={() => <Redirect to="/auctions/open-basket" />}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/watching"
+            render={() => <Redirect to="/auctions/watching" />}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
+            path="/expiring"
+            render={() => <Redirect to="/auctions/expiring" />}
           />
           <ProtectedRoute
             isLocked={isLocked}
             wallets={wallets}
             path="/domains"
             render={this.routeRenderer('', SearchTLD, false)}
-          />
-          <ProtectedRoute
-            isLocked={isLocked}
-            wallets={wallets}
-            path="/watching"
-            render={this.routeRenderer(t('headingWatching'), Watching)}
-          />
-          <ProtectedRoute
-            isLocked={isLocked}
-            wallets={wallets}
-            path="/expiring"
-            render={this.routeRenderer(t('headingExpiring'), Expiring)}
           />
           <ProtectedRoute
             isLocked={isLocked}

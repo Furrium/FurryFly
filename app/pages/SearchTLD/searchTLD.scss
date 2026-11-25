@@ -1,19 +1,54 @@
-@import '../../variables.scss';
-
+// The Register page: one centred panel, one field.
+//
+// This is the entry point to acquiring a name, so it gets a surface of its own rather than
+// a heading floating above a field. The panel is deliberately the only thing on the page -
+// anything else competing for attention would undercut the single action it exists for.
 .search_tld {
-  @extend %col-nowrap;
-  justify-content: flex-end;
-  flex: 1 1 auto;
-  max-width: 30rem;
-  height: 40vh;
-  padding: 2rem;
-  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 6vh 1rem 2rem;
+}
 
-  &__headline {
-    font-size: 2rem;
-    line-height: 2rem * 1.4;
-    font-weight: 500;
-    text-align: center;
-    margin-bottom: 2rem;
+.search_tld__panel {
+  width: min(34rem, 100%);
+  padding: 2.25rem 2rem 2rem;
+  border: 1px solid rgb(var(--fns-brand-rgb, 0 169 126) / 0.18);
+  border-radius: 1.25rem;
+  // The same corner of brand tint the balance card uses, so the two entry surfaces in the
+  // app read as the same family.
+  background: linear-gradient(160deg, rgb(var(--fns-brand-rgb, 0 169 126) / 0.07), rgb(var(--fns-surface-rgb, 17 22 31) / 0.92));
+}
+
+.search_tld__kicker {
+  display: block;
+  color: var(--fns-brand, #00a97e);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.search_tld__headline {
+  margin: 0.6rem 0 0.65rem;
+  color: var(--fns-text, #16161a);
+  font-size: 1.6rem;
+  font-weight: 600;
+  // Tight tracking is part of the reference language for headings; the inherited value
+  // opened the word up enough to read as a label rather than a statement.
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.search_tld__hint {
+  margin: 0 0 1.6rem;
+  color: var(--fns-text-secondary, #4a4a4a);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.search_tld__field {
+  // The field carries its own margins for the top bar's context; neither belongs here.
+  .tld {
+    margin: 0;
   }
 }

@@ -2220,5 +2220,9 @@
   "overviewManageAddresses": "Manage addresses",
   "navGroupHns": "HNS",
   "navGroupDomains": "Domains",
-  "navGroupExtensions": "Extensions"
+  "navGroupExtensions": "Extensions",
+  "headingRegister": "Register",
+  "registerHeadline": "Find or register a name",
+  "registerHint": "Enter a name to see where it stands. From its page you can bid, register, or see who holds it.",
+  "headingDomainInfo": "Domain info"
 }

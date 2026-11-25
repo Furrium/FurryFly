@@ -133,7 +133,8 @@ class Sidebar extends Component {
     const groups = {hns: false, domains: false, extensions: false};
 
     if (/^\/(account|send|receive)/.test(pathname)) groups.hns = true;
-    if (/^\/(domain_manager|domain|auctions|bids|watching|expiring|auction-basket|open-basket)/.test(pathname)) groups.domains = true;
+    // The market and the register page are domain work, so they open the same group.
+    if (/^\/(domain_manager|domain|register|auctions|bids|watching|expiring|auction-basket|open-basket|exchange)/.test(pathname)) groups.domains = true;
     if (/^\/(liquidity-swap|messages|addons)/.test(pathname)) groups.extensions = true;
 
     return groups;
@@ -185,10 +186,10 @@ class Sidebar extends Component {
 
           {this.renderGroup('domains', 'navGroupDomains', [
             {to: '/domain_manager', label: 'headingDomainManager'},
+            {to: '/register', label: 'headingRegister'},
             {to: '/auctions', label: 'headingAuctions'},
+            {to: '/exchange', label: 'headingExchange'},
           ])}
-
-          {this.renderLink('/exchange', 'headingExchange')}
 
           {this.renderGroup('extensions', 'navGroupExtensions', [
             {to: '/liquidity-swap', label: 'headingLiquiditySwap'},

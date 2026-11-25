@@ -361,8 +361,15 @@ class App extends Component {
           <ProtectedRoute
             isLocked={isLocked}
             wallets={wallets}
+            path="/register"
+            render={this.routeRenderer(t('headingRegister'), SearchTLD)}
+          />
+          <ProtectedRoute
+            isLocked={isLocked}
+            wallets={wallets}
             path="/domains"
-            render={this.routeRenderer('', SearchTLD, false)}
+            // The page moved into the sidebar under Domains; the old path keeps working.
+            render={() => <Redirect to="/register" />}
           />
           <ProtectedRoute
             isLocked={isLocked}
@@ -380,7 +387,10 @@ class App extends Component {
             isLocked={isLocked}
             wallets={wallets}
             path="/domain/:name?"
-            render={this.routeRenderer('', Auction, false)}
+            // Rendered with the sidebar and the top bar, like every other page. It used to
+            // take the whole window, which hid the navigation at exactly the point where a
+            // user has arrived at a name and wants to keep moving.
+            render={this.routeRenderer(t('headingDomainInfo'), Auction)}
           />
           <ProtectedRoute
             isLocked={isLocked}

@@ -2220,5 +2220,9 @@
   "overviewManageAddresses": "地址管理",
   "navGroupHns": "HNS",
   "navGroupDomains": "域名",
-  "navGroupExtensions": "扩展"
+  "navGroupExtensions": "扩展",
+  "headingRegister": "注册",
+  "registerHeadline": "查找或注册域名",
+  "registerHint": "输入一个域名查看它的状态。在详情页可以出价、注册，或查看当前持有人。",
+  "headingDomainInfo": "域名信息"
 }

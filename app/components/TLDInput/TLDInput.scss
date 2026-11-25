@@ -1,21 +1,25 @@
 @import '../../variables.scss';
 
+// The name field, used by the top bar and by the Register page.
+//
+// Every colour here was a light-theme literal, so on the dark canvas the field had no
+// visible border, a near-invisible placeholder and a blue magnifier that belonged to no
+// palette in this app. Tokens now, and the icons are painted through a mask so they take
+// the brand colour instead of the blue they were drawn in.
 .tld {
   @extend %row-nowrap;
   position: relative;
-  border: 1px solid rgba($black, 0.1);
-  border-radius: 1rem;
+  border: 1px solid var(--fns-border, #e2e2e2);
+  border-radius: var(--fns-radius-pill, 999px);
   align-items: center;
   padding: 0.4rem 0.5rem 0.4rem 0.75rem;
-  transition: 200ms ease-in-out;
-  margin: 0 0.5rem;
+  background-color: rgb(var(--fns-text-rgb, 22 22 26) / 0.04);
+  transition: border-color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
 
   &--grey-theme {
-    background-color: $athens-gray;
-    border: none;
+    background-color: rgb(var(--fns-text-rgb, 22 22 26) / 0.06);
     padding: 0.9rem 1rem 0.9rem 1.1rem;
-    border-radius: 3rem;
-    border: 1px solid rgba($athens-gray, 1);
+    border-radius: var(--fns-radius-pill, 999px);
   }
 
   &__input {
@@ -23,21 +27,22 @@
     flex: 1 1 auto;
     border: none;
     outline: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 500;
     line-height: 1rem;
     margin-right: 0.25rem;
     min-width: 10rem;
     background-color: transparent;
-    transition: 200ms ease-in-out;
+    color: var(--fns-text, #16161a);
+    transition: color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
 
     &::-webkit-input-placeholder {
       font-weight: 500;
-      color: rgba($black, 0.4);
+      color: var(--fns-text-muted, #909095);
     }
 
     &--error {
-      color: $orange-red;
+      color: var(--fns-danger, #f85149);
     }
 
     &--grey-theme {
@@ -46,7 +51,7 @@
   }
 
   &:focus-within {
-    border: 1px solid rgba($azure-blue, 0.6);
+    border-color: rgb(var(--fns-brand-rgb, 0 169 126) / 0.6);
   }
 
   &--error {
@@ -56,31 +61,46 @@
     perspective: 1000px;
 
     &:focus-within {
-      border-color: $orange-red;
+      border-color: var(--fns-danger, #f85149);
     }
   }
 
+  // Painted through a mask rather than shown as a blue glyph: the asset is a #007eff
+  // magnifier, which is a fourth accent colour in a one-accent interface.
   &__icon {
-    background-image: url('../../assets/images/search.svg');
-    height: 1.25rem;
-    width: 1.25rem;
-    background-size: contain;
-    background-repeat: no-repeat;
-    transition: 200ms ease-in-out;
+    flex: 0 0 auto;
+    background-color: var(--fns-brand, #00a97e);
+    -webkit-mask-image: url('../../assets/images/search.svg');
+    mask-image: url('../../assets/images/search.svg');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    height: 1.1rem;
+    width: 1.1rem;
+    cursor: pointer;
+    transition: opacity var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+
+    &:hover {
+      opacity: 0.8;
+    }
 
     &--error {
       margin: 0.25rem;
       height: 0.75rem;
       width: 0.75rem;
-      background-image: url('../../assets/images/x-red.svg');
+      background-color: var(--fns-danger, #f85149);
+      -webkit-mask-image: url('../../assets/images/x-red.svg');
+      mask-image: url('../../assets/images/x-red.svg');
     }
   }
 
   &__error {
     @extend %h5;
-    color: $orange-red;
+    color: var(--fns-danger, #f85149);
     padding: 0.5rem 1rem;
     height: 0.7rem;
   }
-
 }

@@ -1,3 +1,36 @@
+// ---------------------------------------------------------------------- interface
+//
+// Roboto and Roboto Mono, latin subset only, self-hosted under the Apache License 2.0
+// (see assets/fonts/FONTS.md and ROBOTO-LICENSE.txt).
+//
+// These used to come from an @import of fonts.googleapis.com in global.scss: every launch
+// reached a third party, and an offline launch silently rendered in a different typeface.
+//
+// One file per family, not one per weight: the files Google serves modern user agents are
+// variable, so a single source covers the whole weight axis. That is why the weight is
+// declared as a range - pinning a single value would let the browser pick one instance and
+// stop interpolating.
+//
+// The subset is latin, so Chinese and other scripts fall back to the system stack, which
+// is what we want: bundling a CJK face would add megabytes.
+@font-face {
+  font-family: 'Roboto';
+  src: url('./assets/fonts/roboto-latin.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('./assets/fonts/roboto-mono-latin.woff2') format('woff2');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
+
+// ------------------------------------------------------------- seven-segment readout
+//
 // Seven-segment display faces for the balance readout.
 //
 // DSEG by keshikan, SIL Open Font License 1.1. The full licence ships next to the font

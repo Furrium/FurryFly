@@ -99,6 +99,10 @@ body[data-theme='light'] {
   --fns-success-rgb: 11 202 107;
   --fns-danger: #ff2f1f;
   --fns-danger-rgb: 255 47 31;
+  // Attention sits between ok and bad: a warning that has not failed yet. It was the one
+  // level the Overview action rows coloured from a literal.
+  --fns-warn: #b7791f;
+  --fns-warn-rgb: 183 121 31;
   --fns-warning: #d9a400;
   --fns-warning-rgb: 217 164 0;
 
@@ -153,6 +157,8 @@ body[data-theme='neon'] {
   --fns-success-rgb: 63 185 80;
   --fns-danger: #f85149;
   --fns-danger-rgb: 248 81 73;
+  --fns-warn: #f0b429;
+  --fns-warn-rgb: 240 180 41;
   --fns-warning: #f2cc60;
   --fns-warning-rgb: 242 204 96;
 

@@ -78,42 +78,22 @@ class Sidebar extends Component {
 
   renderNav() {
     const {t} = this.context;
-    const {walletId, walletType, walletInitialized, walletsDetails} = this.props;
+    const {walletId, walletInitialized, walletsDetails} = this.props;
 
     const name = walletsDetails[walletId]?.displayName || walletId;
     const title = `${t('settingWallet')}: ${name}`;
 
     if (!walletInitialized) {
-      return(
-        <React.Fragment>
-          <div className="sidebar__section">{title}</div>
-          <div className="sidebar__actions">
-            <NavLink
-              className="sidebar__action"
-              to="/multisig"
-              activeClassName="sidebar__action--selected"
-            >
-              ⚠️ {t('headingMultisigSetup')}
-            </NavLink>
-          </div>
-      </React.Fragment>
-      );
+      // Multisig setup used to be advertised here unconditionally, before any wallet
+      // existed. Multisig is not part of this product, so the section title is all that
+      // remains to be shown while the wallet is uninitialised.
+      return <div className="sidebar__section">{title}</div>;
     }
 
     return (
       <React.Fragment>
         <div className="sidebar__section">{title}</div>
         <div className="sidebar__actions">
-          {
-            walletType === 'multisig' &&
-            <NavLink
-              className="sidebar__action"
-              to="/multisig"
-              activeClassName="sidebar__action--selected"
-            >
-              {t('headingMultisig')}
-            </NavLink>
-          }
           <NavLink
             to="/overview"
             className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}

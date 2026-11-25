@@ -26,7 +26,7 @@ function log() {
 }
 
 export function formatActionLog(methodName, status, duration, errorCode) {
-  let message = `[FurryFly action] ${methodName} ${status}`;
+  let message = `[Transfur action] ${methodName} ${status}`;
 
   if (errorCode !== undefined && errorCode !== null) {
     message += ` [${String(errorCode).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'ERROR'}]`;

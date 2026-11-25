@@ -60,8 +60,8 @@ function showRendererFailureAndQuit(error) {
   electron.dialog.showMessageBox(null, {
     type: 'error',
     buttons: ['Quit'],
-    title: 'Couldn\'t Open FurryFly',
-    message: 'FurryFly could not load its application window and must quit.',
+    title: 'Couldn\'t Open TRANSFUR',
+    message: 'Transfur could not load its application window and must quit.',
     detail,
   }).catch(dialogError => {
     console.error('Could not display renderer startup error:', dialogError);
@@ -77,7 +77,7 @@ export function waitForMainWindowReady(afterGeneration = 0, timeoutMs = 30000) {
     const waiter = {afterGeneration, resolve, reject, timeout: null};
     waiter.timeout = setTimeout(() => {
       rendererReadyWaiters = rendererReadyWaiters.filter(item => item !== waiter);
-      reject(new Error('Timed out waiting for the FurryFly renderer to finish loading.'));
+      reject(new Error('Timed out waiting for the Transfur renderer to finish loading.'));
     }, timeoutMs);
     rendererReadyWaiters.push(waiter);
   });
@@ -94,7 +94,7 @@ function authorizePaths(paths = []) {
 function assertAuthorizedPath(filePath) {
   const resolved = typeof filePath === 'string' ? path.resolve(filePath) : '';
   if (!authorizedFilePaths.has(resolved)) {
-    throw new Error('File access was not authorized by a FurryFly file dialog.');
+    throw new Error('File access was not authorized by a Transfur file dialog.');
   }
   return resolved;
 }
@@ -275,7 +275,7 @@ export default function showMainWindow() {
   window.on('closed', () => {
     const closedBeforeReady = mainWindow === window && !rendererReady;
     clearMainWindow(window);
-    if (closedBeforeReady) settleReadyWaiters(new Error('FurryFly window closed before its renderer finished loading.'));
+    if (closedBeforeReady) settleReadyWaiters(new Error('Transfur window closed before its renderer finished loading.'));
 
     // need to quit the entire app (i.e., including
     // the HSD window) once the main window is closed

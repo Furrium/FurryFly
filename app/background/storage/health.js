@@ -125,7 +125,7 @@ export class StorageHealth {
       return false;
     }
 
-    this.logger('[FurryFly storage] Disk-full error', safeStorageDiagnostic(error, source));
+    this.logger('[Transfur storage] Disk-full error', safeStorageDiagnostic(error, source));
     this._publishBlocked({source, transactionAttempted});
     return true;
   }
@@ -146,12 +146,12 @@ export class StorageHealth {
 
       // A platform/filesystem that cannot report free space must not be
       // mistaken for a full disk. The actual storage error listeners remain active.
-      this.logger('[FurryFly storage] Free-space preflight unavailable', safeStorageDiagnostic(error, source));
+      this.logger('[Transfur storage] Free-space preflight unavailable', safeStorageDiagnostic(error, source));
       return {ok: true, checked: false, availableBytes: null};
     }
 
     if (availableBytes != null && availableBytes < this.minimumBytes) {
-      this.logger('[FurryFly storage] Free-space preflight blocked operation', {
+      this.logger('[Transfur storage] Free-space preflight blocked operation', {
         source,
         availableBytes,
         requiredBytes: this.minimumBytes,
@@ -185,7 +185,7 @@ export class StorageHealth {
   }
 
   createBlockedError() {
-    const error = new Error('FurryFly cannot continue because your device is low on storage.');
+    const error = new Error('Transfur cannot continue because your device is low on storage.');
     error.code = STORAGE_BLOCKED_ERROR_CODE;
     return error;
   }

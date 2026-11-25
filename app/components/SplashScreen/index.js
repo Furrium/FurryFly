@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import Proptype from 'prop-types';
-import FurryFlyLogo from '../../assets/images/furryfly-logo-circle.svg';
+import TransfurLogo from '../../assets/images/transfur-logo-circle.svg';
 import Spinner from '../../assets/images/brick-loader.svg';
 import dbClient from "../../utils/dbClient";
 import Alert from "../Alert";
@@ -165,7 +165,7 @@ const logoWrapperStyle = {
 };
 
 const bobLogoStyle = {
-  backgroundImage: `url(${FurryFlyLogo})`,
+  backgroundImage: `url(${TransfurLogo})`,
   height: '75px',
   width: '75px',
   backgroundSize: 'contain',

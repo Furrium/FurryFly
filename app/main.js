@@ -7,6 +7,7 @@ import "isomorphic-fetch";
 import {app, dialog} from 'electron';
 import path from 'path';
 const BRAND = require('./constants/branding');
+const {resolveUserDataDir, resolveChainDir} = require('./background/storage/brandDirs');
 const {decideCompatAction} = require('./background/protocolRegistration');
 
 const {
@@ -114,12 +115,36 @@ if (isLearnHnsForkBuild) {
   process.env.BOB_LEARNHNS_FORK = 'true';
   process.env.BOB_LEARNHNS_TEST = 'true';
   app.setName(BRAND.displayName);
-  const smokeUserData = process.env.BOB_SMOKE_USER_DATA;
-  const isolatedUserData = isPackagedSmokeTest && smokeUserData && path.isAbsolute(smokeUserData)
-    ? smokeUserData
-    : packagedAcceptanceConfig?.userData;
-  app.setPath('userData', isolatedUserData || path.join(app.getPath('appData'), BRAND.userDataDirName));
 }
+
+// Pinned on every start, not only under the fork flag.
+//
+// Electron would otherwise derive the profile directory from package.json, which is a
+// second source of truth for a decision branding.js already makes. The two agreed while
+// the product name and the directory name were spelled the same, so nothing broke - but
+// they stop agreeing the moment either changes, and the failure is silent: the app comes
+// up on an empty profile while the real one sits untouched beside it. Pinning the path
+// here also means the carry-over below is reached regardless of how the fork flag was
+// decided, so a renamed build adopts the previous profile instead of abandoning it.
+const smokeUserData = process.env.BOB_SMOKE_USER_DATA;
+const isolatedUserData = isPackagedSmokeTest && smokeUserData && path.isAbsolute(smokeUserData)
+  ? smokeUserData
+  : packagedAcceptanceConfig?.userData;
+app.setPath('userData', isolatedUserData || resolveUserDataDir({
+  appDataPath: app.getPath('appData'),
+  targetName: BRAND.userDataDirName,
+  legacyNames: BRAND.legacyUserDataDirNames,
+  log: console.error,
+}));
+
+// Carried out here, before any service resolves the node prefix, so a rename of the
+// product does not strand an existing chain on the previous path. A no-op once moved,
+// when the preferred drive is absent, and when the user has chosen their own directory.
+resolveChainDir({
+  target: BRAND.chainDir,
+  legacyDirs: BRAND.legacyChainDirs,
+  log: console.error,
+});
 
 try {
   if (!isPackagedTestMode) {
@@ -135,7 +160,7 @@ try {
   }
 } catch (error) {
   earlyStartupError = error;
-  console.error('Early FurryFly startup initialization failed:', error);
+  console.error('Early Transfur startup initialization failed:', error);
 }
 
 function traceDeeplink(stage, details) {
@@ -258,7 +283,7 @@ if (isPrimaryInstance) {
     if (startupFailureHandled) return;
     startupFailureHandled = true;
     const error = reason instanceof Error ? reason : new Error(String(reason));
-    console.error('FurryFly startup failed:', error);
+    console.error('Transfur startup failed:', error);
     if (Sentry) Sentry.captureException(error);
 
     if (isPackagedTestMode) {

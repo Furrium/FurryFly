@@ -14,7 +14,7 @@ export function createRecoveryAdmission(getRescanState) {
       if (isBusy()) {
         const failed = getRescanState()?.status === 'failed';
         const error = new Error(failed
-          ? 'Wallet recovery is incomplete. Restart FurryFly before restoring or importing again.'
+          ? 'Wallet recovery is incomplete. Restart Transfur before restoring or importing again.'
           : 'Wallet recovery is queued or in progress. Wait for Sync status to finish before restoring or importing again.');
         error.code = 'WALLET_RECOVERY_BUSY';
         throw error;

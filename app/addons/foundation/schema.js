@@ -102,7 +102,7 @@ function validateEntry(entry) {
   if (entry.kind === 'trusted-bundled-route') {
     requireString(entry.route, 'entry.route', {max: 512});
     if (!entry.route.startsWith('/') || entry.route.startsWith('//')) {
-      throw manifestError('EENTRY', 'Bundled routes must be absolute FurryFly routes.', 'entry.route');
+      throw manifestError('EENTRY', 'Bundled routes must be absolute Transfur routes.', 'entry.route');
     }
     if (entry.url !== undefined || entry.service !== undefined) {
       throw manifestError('EENTRY', 'Bundled routes may declare only route.', 'entry');

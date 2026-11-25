@@ -284,7 +284,7 @@ function requestHandler(req, res) {
     if (!isAuthorized(req)) return unauthorized(res);
     writeJson(res, 200, {
       ok: true,
-      app: 'FurryFly',
+      app: 'Transfur',
       bridge: 'hns-investments',
     });
     return;
@@ -321,7 +321,7 @@ function writeManifest(port) {
   manifestPath = path.join(app.getPath('userData'), BRIDGE_MANIFEST);
   const manifest = {
     version: 1,
-    app: 'FurryFly',
+    app: 'Transfur',
     bridge: 'hns-investments',
     baseUrl: `http://127.0.0.1:${port}`,
     token,

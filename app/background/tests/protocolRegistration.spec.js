@@ -2,7 +2,7 @@ import test from 'tape';
 
 const {decideCompatAction, normalizeProgram} = require('../protocolRegistration');
 
-const OUR_EXE = 'C:\\Program Files\\FurryFly\\FurryFly.exe';
+const OUR_EXE = 'C:\\Program Files\\Transfur\\Transfur.exe';
 const THEIR_EXE =
   'C:\\Users\\ZMX\\AppData\\Local\\Programs\\bob-wallet\\Bob LearnHNS.exe';
 
@@ -44,8 +44,8 @@ test('a scheme owned by another wallet is left alone', (t) => {
 
 test('program paths compare on normalized separators', (t) => {
   t.equal(
-    normalizeProgram('C:/Apps/FurryFly/FurryFly.EXE'),
-    normalizeProgram('C:\\Apps\\FurryFly\\FurryFly.exe'),
+    normalizeProgram('C:/Apps/Transfur/Transfur.EXE'),
+    normalizeProgram('C:\\Apps\\Transfur\\Transfur.exe'),
   );
   t.end();
 });

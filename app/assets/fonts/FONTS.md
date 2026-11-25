@@ -1,4 +1,4 @@
-Fonts bundled with FurryFly
+Fonts bundled with TRANSFUR
 ===========================
 
 Roboto and Roboto Mono

@@ -1,9 +1,9 @@
 {
-  "name": "furryfly-wallet",
-  "productName": "FurryFly",
+  "name": "transfur-wallet",
+  "productName": "TRANSFUR",
   "author": "Kyokan Group, Inc.",
   "version": "2.3.21",
-  "description": "FurryFly - a Handshake wallet, name auction manager and full node.",
+  "description": "TRANSFUR - a Handshake wallet, name auction manager and full node.",
   "scripts": {
     "build": "node ./scripts/package.js",
     "build-renderer": "cross-env NODE_ENV=production webpack --config ./configs/webpack.config.renderer.prod.babel.js",
@@ -18,7 +18,7 @@
     "clean": "node ./scripts/clean.js",
     "test:sync": "node scripts/sync/run.cjs",
     "pretest": "webpack --config ./configs/webpack.config.test.babel.js",
-    "test": "tape -r jsdom-global/register ./test-dist/test.js && node --test scripts/tests/basket-service.test.cjs scripts/tests/register-all-service.test.cjs scripts/tests/branding.test.cjs scripts/tests/i18n-scope.test.cjs && npm run test:packaged-harness",
+    "test": "tape -r jsdom-global/register ./test-dist/test.js && node --test scripts/tests/basket-service.test.cjs scripts/tests/register-all-service.test.cjs scripts/tests/branding.test.cjs scripts/tests/brand-dirs.test.cjs scripts/tests/i18n-scope.test.cjs && npm run test:packaged-harness",
     "test:f": "cross-env TEMP=F:\\FNS\\tmp TMP=F:\\FNS\\tmp npm test",
     "test:packaged-harness": "node --test scripts/tests/packaged-acceptance.test.cjs scripts/tests/product-runtime.test.cjs scripts/tests/interactive-product.test.cjs scripts/tests/restore-runtime.test.cjs scripts/tests/embedded-restore.test.cjs scripts/tests/acceptance-routes.test.cjs scripts/tests/renderer-boundary.test.cjs scripts/tests/dependency-hardening.test.cjs scripts/tests/websocket-policy.test.cjs",
     "add-locale": "node scripts/add-locale.js",
@@ -28,13 +28,13 @@
   },
   "main": "./dist/main.js",
   "build": {
-    "productName": "FurryFly",
-    "appId": "com.furryfly.wallet",
+    "productName": "TRANSFUR",
+    "appId": "co.transfur.wallet",
     "npmRebuild": false,
     "protocols": {
-      "name": "furryfly-wallet",
+      "name": "transfur-wallet",
       "schemes": [
-        "furryfly"
+        "transfur"
       ]
     },
     "files": [
@@ -65,14 +65,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kyokan/bob-electron.git"
+    "url": "git+https://github.com/Furrium/transfur.git"
   },
   "bugs": {
-    "url": "https://github.com/kyokan/bob-wallet/issues/new?template=bug_report.md"
+    "url": "https://github.com/Furrium/transfur/issues/new"
   },
   "license": "GPL-3.0-only",
   "keywords": [],
-  "homepage": "https://bobwallet.io/",
+  "homepage": "https://transfur.co",
   "overrides": {
     "@babel/runtime": "7.26.10",
     "ajv@^6": "6.14.0",

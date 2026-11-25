@@ -34,7 +34,7 @@ export default class StorageErrorBanner extends Component {
       const result = await storageClient.retryStatusCheck();
       this.setState({checkFailed: !result.ok});
     } catch (error) {
-      console.error('[FurryFly storage] Status check failed', {
+      console.error('[Transfur storage] Status check failed', {
         code: error?.code || '',
         message: String(error?.message || error).slice(0, 500),
       });

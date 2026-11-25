@@ -12,13 +12,13 @@ const HIP2_PORT = 'hip2/port';
 async function getPort() {
   const hip2Port = await get(HIP2_PORT);
   const port = selectAliasResolverPort(hip2Port, service.getRsPort());
-  console.log(`[FurryFly alias] Local resolver port: ${port}`);
+  console.log(`[Transfur alias] Local resolver port: ${port}`);
   return port;
 }
 
 async function setPort(port) {
   await put(HIP2_PORT, port);
-  console.log(`[FurryFly alias] Local resolver port changed to: ${port}`);
+  console.log(`[Transfur alias] Local resolver port changed to: ${port}`);
   dispatchToMainWindow({
     type: SET_HIP2_PORT,
     payload: port

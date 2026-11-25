@@ -7,9 +7,9 @@ const EXAMPLE_ADDON_MANIFESTS = Object.freeze([
   validateManifest({
     schemaVersion: 1,
     id: 'bob-name-quest',
-    name: 'FurryFly\'s Name Quest',
+    name: 'Transfur\'s Name Quest',
     publisher: {
-      name: 'FurryFly Wallet website maintainers',
+      name: 'Transfur Wallet website maintainers',
       url: `${BRAND.siteUrl}`,
     },
     version: '0.1.0-example',
@@ -22,8 +22,8 @@ const EXAMPLE_ADDON_MANIFESTS = Object.freeze([
   validateManifest({
     schemaVersion: 1,
     id: 'bob-system-dns',
-    name: 'FurryFly System DNS',
-    publisher: {name: 'FurryFly Wallet maintainers'},
+    name: 'Transfur System DNS',
+    publisher: {name: 'Transfur Wallet maintainers'},
     version: '0.1.0-example',
     description: 'Proposed native resolver status and host-mediated system DNS controls.',
     entry: {kind: 'native-service', service: 'system-dns'},

@@ -45,7 +45,15 @@ test('the userData directory is its own name, not another product\'s', () => {
 test('no source file still registers the retired schemes', () => {
   const fs = require('node:fs');
   const root = path.resolve(__dirname, '../..');
-  const retired = [/\bbob-learnhns:/, /\bsetAsDefaultProtocolClient\('bob'/];
+  // Schemes this build must not register: Bob LearnHNS's, which this fork deliberately
+  // does not claim, and this product's own previous scheme, which stopped being
+  // registered when the product was renamed. A stray re-registration of either would
+  // hand the OS an association the installer no longer declares.
+  const retired = [
+    /\bbob-learnhns:/,
+    /\bsetAsDefaultProtocolClient\('bob'/,
+    /\bfurryfly:/,
+  ];
   const offenders = [];
   const walk = (dir) => {
     for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {

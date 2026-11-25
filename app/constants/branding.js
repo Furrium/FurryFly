@@ -7,11 +7,13 @@
 // webpack renderer all consume it, and plain node --test files can require it
 // without a transform.
 module.exports = {
-  displayName: 'FurryFly',
-  packageName: 'furryfly-wallet',
-  appId: 'com.furryfly.wallet',
-  // The URL scheme this app registers and accepts.
-  protocol: 'furryfly',
+  displayName: 'TRANSFUR',
+  packageName: 'transfur-wallet',
+  appId: 'co.transfur.wallet',
+  // The URL scheme this app registers and accepts. Renaming this from the previous
+  // brand breaks old deep links on purpose: a link carrying the previous scheme would
+  // otherwise resolve to whichever build the OS still associates with it.
+  protocol: 'transfur',
 
   // Extra schemes this build will handle when the OS delivers them. Deliberately
   // NOT listed in package.json: the installer would then claim them outright and
@@ -19,25 +21,36 @@ module.exports = {
   // when no other executable owns it.
   compatProtocols: ['bob-learnhns'],
   // Directory under appData() that holds wallet, chain and hsd data.
-  userDataDirName: 'FurryFly',
+  userDataDirName: 'Transfur',
+
+  // Where this app's data lived under its previous name. renameLegacyDirectories()
+  // moves these across once, on the first start of a build carrying the new name, so
+  // renaming the product does not strand an existing wallet and a synced chain.
+  // Ordered oldest first; each entry is tried only when the new location is absent.
+  legacyUserDataDirNames: ['FurryFly'],
 
   // Preferred home for the node prefix (chain, wallet db, indexes). The chain is
   // the only part of this app that grows without bound, so it is kept off the
   // system drive when this location is usable. Resolved on every start and never
   // persisted, so a machine without this drive falls back to appData. A path the
   // user picks in Settings > Connection always wins.
-  chainDir: 'E:\\FurryFly\\hsd_data',
+  chainDir: 'E:\\Transfur\\hsd_data',
+
+  // Previous locations of chainDir, moved across on first start for the same reason
+  // as legacyUserDataDirNames. Kept as absolute paths because the preferred location
+  // is absolute; both sit on the same volume, so the move is a rename rather than a copy.
+  legacyChainDirs: ['E:\\FurryFly\\hsd_data'],
 
   // Offset added to hsd's base ports for the node, wallet, recursive resolver
   // and authoritative resolver. This app must not sit on the same ports as an
   // installed Bob LearnHNS, which occupies base+1000; upstream Bob uses base+0.
-  // FurryFly therefore runs at base+3000.
+  // TRANSFUR therefore runs at base+3000.
   nodePortOffset: 3000,
 
   // Canonical site. Every documentation and help link in the app points here, so the
-  // site has to serve the paths listed in README.md under "Site URLs" — that list is
+  // site has to serve the paths listed in README.md under "Site URLs" - that list is
   // the contract between this build and the website.
-  siteUrl: 'https://furryfly.com',
+  siteUrl: 'https://transfur.co',
 
   // GitHub "owner/name" whose releases this build may update itself from.
   // null disables the update check. Keep null unless the repository actually

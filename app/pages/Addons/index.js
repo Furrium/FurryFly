@@ -34,7 +34,7 @@ export const ADDONS = createBuiltInCatalog([
     statusKey: 'shakexAvailable',
     actionKey: 'shakexOpen',
     status: 'Available',
-    description: 'Community name listings by Marioo. Browse asking prices, seller contacts and the FurryFly paid-transfer guide.',
+    description: 'Community name listings by Marioo. Browse asking prices, seller contacts and the Transfur paid-transfer guide.',
     action: 'Open',
   },
   {
@@ -44,7 +44,7 @@ export const ADDONS = createBuiltInCatalog([
     descriptionKey: 'addonShakedexDescription',
     actionKey: 'open',
     status: 'Available',
-    description: 'Browse pending and active Shakedex channel listings from inside FurryFly.',
+    description: 'Browse pending and active Shakedex channel listings from inside Transfur.',
     action: 'Open',
   },
   {
@@ -66,7 +66,7 @@ export const ADDONS = createBuiltInCatalog([
     status: 'Public Preview',
     action: 'Open',
     docsHref: `${BRAND.siteUrl}/docs/liquidity-spot`,
-    externalNotice: 'Liquidity opens outside FurryFly. FurryFly will not share your seed phrase, private keys, wallet password, or signing permissions with this Add On.',
+    externalNotice: 'Liquidity opens outside Transfur. Transfur will not share your seed phrase, private keys, wallet password, or signing permissions with this Add On.',
     detailKeys: ['addonLiquidityGuestDetail', 'addonLiquidityAccountDetail', 'addonLiquiditySwapDetail', 'addonLiquidityPermissionsDetail'],
   },
   {

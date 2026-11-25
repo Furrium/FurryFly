@@ -28,7 +28,7 @@ test('storage failure aborts a pending bid rescan before transaction submission'
     submissions++;
     t.fail('storage failure should reject the wait');
   } catch (error) {
-    t.match(error.message, /FurryFly cannot continue because your device is low on storage/);
+    t.match(error.message, /Transfur cannot continue because your device is low on storage/);
     t.match(error.message, /transaction may not have been submitted/);
   }
 

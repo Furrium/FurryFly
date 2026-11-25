@@ -358,7 +358,7 @@ async function assertAuctionTracked(name) {
     if (e.message.match(/auction not found/i)) {
       const error = new Error(
         `This wallet does not have auction history for ${name}/ yet (common in SPV). ` +
-        `FurryFly will try to import it automatically for basket bids. ` +
+        `Transfur will try to import it automatically for basket bids. ` +
         `If this keeps happening, open ${name}/ and use Rescan Auction, wait until sync finishes, then retry.`
       );
       error.messageKey = 'namesAuctionNotTracked';

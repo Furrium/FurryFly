@@ -95,7 +95,7 @@ test('rejects future versions, unsupported operations, and duplicates', t => {
   const zoneRecord = copy(addresses);
   zoneRecord.operations[0].recordType = 'A';
   zoneRecord.operations.splice(1);
-  t.throws(() => parseActivateProposal(text(zoneRecord), options()), /not valid in an on-chain FurryFly resource/);
+  t.throws(() => parseActivateProposal(text(zoneRecord), options()), /not valid in an on-chain Transfur resource/);
 
   const duplicate = copy(addresses);
   duplicate.operations[1] = copy(duplicate.operations[0]);

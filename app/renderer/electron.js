@@ -1,6 +1,6 @@
 const bridge = window.bobElectron;
 if (!bridge) {
-  throw new Error('FurryFly preload bridge is unavailable.');
+  throw new Error('Transfur preload bridge is unavailable.');
 }
 
 const listenerIds = new WeakMap();

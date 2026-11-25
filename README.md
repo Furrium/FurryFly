@@ -1,6 +1,6 @@
-# FurryFly: a Handshake wallet and full node for Windows
+# Transfur: a Handshake wallet and full node for Windows
 
-FurryFly is a **Windows-only** desktop wallet for [Handshake](https://handshake.org) with an
+Transfur is a **Windows-only** desktop wallet for [Handshake](https://handshake.org) with an
 integrated full node. It is a customized build of
 [Bob Wallet](https://github.com/shadstoneofficial/bob-wallet).
 
@@ -11,16 +11,16 @@ integrated full node. It is a customized build of
 - **Windows only.** The macOS and Linux packaging targets are gone, along with their signing,
   notarization and CI workflows. Only a Windows x64 `.msi` is produced.
 - **Its own local ports.** The node, wallet and DNS resolver listen at hsd's base ports shifted
-  by 3000, so FurryFly coexists with an installed Bob LearnHNS (which sits at base+1000) instead
+  by 3000, so Transfur coexists with an installed Bob LearnHNS (which sits at base+1000) instead
   of failing to bind.
-- **Its own product identity.** App id `com.furryfly.wallet`, URL scheme `furryfly://`, and all
-  wallet, chain and hsd data under `%APPDATA%\FurryFly`. FurryFly therefore installs and runs
+- **Its own product identity.** App id `co.transfur.wallet`, URL scheme `transfur://`, and all
+  wallet, chain and hsd data under `%APPDATA%\Transfur`. Transfur therefore installs and runs
   beside Bob Wallet instead of sharing a profile with it.
 - **No inherited telemetry or update feed.** Crash reporting and the GitHub release check are
   both off by default. The inherited values pointed at the upstream project's Sentry project and
   release feed, which would have sent this build's crash reports to a third party and offered a
   different product as an "update". Enabling either is a one-line change in
-  `app/constants/branding.js` once FurryFly has its own repository and Sentry project.
+  `app/constants/branding.js` once Transfur has its own repository and Sentry project.
 - **Explicit native rebuild.** electron-builder's automatic rebuild is disabled;
   `scripts/rebuild-native.js` compiles the six native modules against Electron's ABI and leaves
   out the optional `unbound` binding, which `bns` already guards with a JavaScript resolver
@@ -30,16 +30,16 @@ integrated full node. It is a customized build of
 
 Windows 10/11 x64 with:
 
-- **Node.js 22 LTS** â€?the tested configuration, and what CI uses.
+- **Node.js 22 LTS** ï¿½?the tested configuration, and what CI uses.
 - **Visual Studio Build Tools** with the *Desktop development with C++* workload.
-- **Windows 10 SDK 10.0.19041.0** â€?`bcrypto` and `bdb` publish no prebuilt binaries, so a
+- **Windows 10 SDK 10.0.19041.0** ï¿½?`bcrypto` and `bdb` publish no prebuilt binaries, so a
   compiler and this SDK are mandatory. Without it the native build stops at `MSB8036`.
 
 ## Build from source
 
 ```bat
-git clone https://github.com/Furrium/FurryFly.git
-cd FurryFly
+git clone https://github.com/Furrium/transfur.git
+cd transfur
 npm install
 npm run build
 npm run package-win
@@ -68,7 +68,7 @@ and its scratch profiles live in `os.tmpdir()`. Use `npm run test:f` to keep the
 
 ## Site URLs
 
-`branding.siteUrl` is `https://furryfly.com`. Every help and documentation link in the
+`branding.siteUrl` is `https://transfur.co`. Every help and documentation link in the
 app builds its URL from that value, so the site must serve these paths. They are listed
 here because the site is the other half of this contract: a link that has no page behind
 it is worse than no link.
@@ -94,19 +94,19 @@ still the Bob SPV helper API, not the product.
 
 | What | Where |
 | --- | --- |
-| Profile (wallet, chain data, settings) | `%APPDATA%\FurryFly` |
-| Deep links | `furryfly://` |
+| Profile (wallet, chain data, settings) | `%APPDATA%\Transfur` |
+| Deep links | `transfur://` |
 
 ## Known limitations
 
 
 ## License
 
-FurryFly is distributed under the **GNU General Public License, version 3 only**. See
+Transfur is distributed under the **GNU General Public License, version 3 only**. See
 [LICENSE](./LICENSE).
 
 It is a modified version of Bob Wallet (https://github.com/shadstoneofficial/bob-wallet), which
 is also GPLv3. As the license requires of a modified version, the complete source for this
 version is this repository.
 
-FurryFly is not affiliated with, or endorsed by, the Bob Wallet project.
+Transfur is not affiliated with, or endorsed by, the Bob Wallet project.

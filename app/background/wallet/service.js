@@ -2852,7 +2852,7 @@ class WalletService {
       actionName === 'bid-many'
         ? 'Basket signing failed. No transaction was sent. The wallet could not provide signing keys for its inputs; it may have locked during preparation. Unlock the correct wallet/account and review the entire basket again, including auction deadlines.'
         : actionName === 'bid'
-        ? 'Bid was not submitted: FurryFly could build the bid transaction, but the selected wallet/account could not provide signing keys for its inputs. Unlock the correct wallet/account, confirm it is not watch-only, then rescan the auction before retrying.'
+        ? 'Bid was not submitted: Transfur could build the bid transaction, but the selected wallet/account could not provide signing keys for its inputs. Unlock the correct wallet/account, confirm it is not watch-only, then rescan the auction before retrying.'
         : SIGNING_KEY_ERROR_MESSAGE
     );
 

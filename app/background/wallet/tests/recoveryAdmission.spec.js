@@ -29,7 +29,7 @@ test('failed recovery blocks another import with an explicit restart instruction
   try {gate.beginImport(); t.fail('must reject');}
   catch (error) {
     t.equal(error.code, 'WALLET_RECOVERY_BUSY');
-    t.match(error.message, /Restart FurryFly/);
+    t.match(error.message, /Restart Transfur/);
   }
   t.end();
 });

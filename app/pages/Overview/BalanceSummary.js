@@ -49,7 +49,11 @@ export default function BalanceSummary(props) {
       <span className="overview__hero-meta">{props.walletName} · {t(kind)}</span>
       {ready && props.showUsdValue && props.hnsPrice?.value > 0 &&
         <span className="overview__hero-meta">~${(props.spendableBalance / 1e6 * props.hnsPrice.value).toFixed(2)} {props.hnsPrice.currency || 'USD'}</span>}
-      <ReceiveAddressCard address={props.receiveAddress} onRotate={props.onRotateAddress} />
+      <ReceiveAddressCard
+        address={props.receiveAddress}
+        onRotate={props.onRotateAddress}
+        onManage={props.onManageAddresses}
+      />
     </div>
     <div className="overview__balance-locked">
       <span className="overview__hero-kicker">{t('overviewLockedAuctions')}</span>

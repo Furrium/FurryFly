@@ -117,13 +117,6 @@ class Sidebar extends Component {
             {t('headingSend')}
           </NavLink>
           <NavLink
-            to="/receive"
-            isActive={(match, location) => location.pathname === '/receive'}
-            className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
-          >
-            {t('headingReceive')}
-          </NavLink>
-          <NavLink
             to="/receive/addresses"
             className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
           >

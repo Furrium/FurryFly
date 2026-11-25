@@ -95,14 +95,40 @@
   background-color: rgb(var(--fns-text-rgb) / 0.04);
 }
 
+.overview__receive-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
 .overview__receive-kicker {
   display: block;
-  margin-bottom: 0.35rem;
+  // The margin moved to the head row, which is what the kicker now sits in.
+  margin-bottom: 0;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--fns-text-muted);
+}
+
+// Quiet by design: the address list is management, not the thing you came here to do.
+.overview__receive-manage {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fns-text-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color var(--fns-motion-fast, 140ms) var(--fns-motion-ease-out, ease);
+
+  &:hover {
+    color: var(--fns-brand);
+  }
 }
 
 .overview__receive-row {

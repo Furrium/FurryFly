@@ -13,7 +13,7 @@ import MiniModal from '../../components/Modal/MiniModal';
 //
 // Deliberately not connected: the page owns the store and the rotation side effect, so
 // this stays a component that only renders an address and reports intent.
-function ReceiveAddressCard({address, onRotate}) {
+function ReceiveAddressCard({address, onRotate, onManage}) {
   const {t} = React.useContext(I18nContext);
   const [showQr, setShowQr] = React.useState(false);
   const [isRotating, setRotating] = React.useState(false);
@@ -34,7 +34,14 @@ function ReceiveAddressCard({address, onRotate}) {
 
   return (
     <div className="overview__receive">
-      <span className="overview__receive-kicker">{t('overviewReceiveAddress')}</span>
+      <div className="overview__receive-head">
+        <span className="overview__receive-kicker">{t('overviewReceiveAddress')}</span>
+        {!!onManage && (
+          <button type="button" className="overview__receive-manage" onClick={onManage}>
+            {t('overviewManageAddresses')} →
+          </button>
+        )}
+      </div>
       <div className="overview__receive-row">
         <span className="overview__receive-address" title={address}>{address}</span>
         <div className="overview__receive-actions">
@@ -74,11 +81,13 @@ function ReceiveAddressCard({address, onRotate}) {
 ReceiveAddressCard.propTypes = {
   address: PropTypes.string,
   onRotate: PropTypes.func,
+  onManage: PropTypes.func,
 };
 
 ReceiveAddressCard.defaultProps = {
   address: '',
   onRotate: null,
+  onManage: null,
 };
 
 export default ReceiveAddressCard;

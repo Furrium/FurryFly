@@ -2216,5 +2216,6 @@
   "overviewReceiveAddress": "当前接收地址",
   "overviewRotateAddress": "轮换",
   "overviewRotatingAddress": "轮换中…",
-  "overviewShowQr": "QR 码"
+  "overviewShowQr": "QR 码",
+  "overviewManageAddresses": "管理地址"
 }

@@ -414,6 +414,7 @@ export default class Overview extends Component {
       walletName={this.getWalletDisplayName()}
       onRetryStats={() => this.updateStats()}
       onRotateAddress={this.onRotateAddress}
+      onManageAddresses={() => this.go('/receive/addresses')}
     />;
   }
 

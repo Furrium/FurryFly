@@ -246,7 +246,11 @@ class App extends Component {
             isLocked={isLocked}
             wallets={wallets}
             path="/receive"
-            render={this.routeRenderer(t('headingReceive'), ReceiveModal)}
+            // The address, the copy button and the QR now live on the Overview balance
+            // card, so this page had become a second place to do the same thing. The
+            // route stays as a redirect because old links and bookmarks point at it;
+            // what remains worth visiting is the address list beside it.
+            render={() => <Redirect to="/receive/addresses" />}
           />
           <ProtectedRoute
             isLocked={isLocked}

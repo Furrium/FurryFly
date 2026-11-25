@@ -2216,5 +2216,6 @@
   "overviewReceiveAddress": "Current receiving address",
   "overviewRotateAddress": "Rotate",
   "overviewRotatingAddress": "Rotating…",
-  "overviewShowQr": "QR code"
+  "overviewShowQr": "QR code",
+  "overviewManageAddresses": "Manage addresses"
 }

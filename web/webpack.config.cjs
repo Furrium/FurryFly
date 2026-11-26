@@ -2,7 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const webpack = require('webpack');
 const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
-const output = path.join(__dirname, 'dist');
+const output = process.env.TRANSFUR_WEB_DIST
+  ? path.resolve(process.env.TRANSFUR_WEB_DIST) : path.join(__dirname, 'dist');
 
 class StaticFiles {
   apply(compiler) {

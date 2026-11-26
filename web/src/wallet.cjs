@@ -15,6 +15,7 @@ const network = Network.get('regtest');
 if (network.coinbaseMaturity !== COINBASE_MATURITY) throw new Error('Unexpected regtest coinbase maturity.');
 const feeRate = 2_000;
 const maxFee = 10_000;
+const RECEIVE_COUNT = 5;
 
 function newPhrase() {
   return new Mnemonic({bits: 128, language: 'english'}).getPhrase();
@@ -40,9 +41,14 @@ function openWallet(phrase) {
   let root;
   try { root = HDPrivateKey.fromSeed(seed); } finally { seed.fill(0); }
   const account = root.deriveAccount(44, network.keyPrefix.coinType, 0);
-  const rings = [0, 1].map(branch => KeyRing.fromPrivate(account.derive(branch).derive(0).privateKey));
-  const addresses = rings.map(ring => ring.getAddress().toString(network));
-  return {rings, addresses, phrase: mnemonic.getPhrase()};
+  const receiveBranch = account.derive(0);
+  const receiveRings = Array.from({length: RECEIVE_COUNT}, (_, index) => (
+    KeyRing.fromPrivate(receiveBranch.derive(index).privateKey)
+  ));
+  const changeRing = KeyRing.fromPrivate(account.derive(1).derive(0).privateKey);
+  const receiveAddresses = receiveRings.map(ring => ring.getAddress().toString(network));
+  const addresses = [...receiveAddresses, changeRing.getAddress().toString(network)];
+  return {rings: [...receiveRings, changeRing], addresses, receiveAddresses, changeRing, phrase: mnemonic.getPhrase()};
 }
 
 function recipientAddress(recipient) {
@@ -62,7 +68,7 @@ async function prepareTransfer({wallet, recipient, amount, height, coins}) {
   const value = parseAmount(amount);
   const payment = new Output({address: destination, value});
   if (payment.isDust(policy.MIN_RELAY)) throw new Error('This amount is too small for a standard transaction.');
-  const changeAddress = wallet.rings[1].getAddress();
+  const changeAddress = wallet.changeRing.getAddress();
   const available = validateCoins(coins, wallet.addresses, height).filter(coin => isSpendable(coin, height));
   if (available.length === 0) throw new Error('No confirmed, mature funds to spend.');
   const inputs = available.map(coin => new Coin({...coin, hash: Buffer.from(coin.hash, 'hex'),

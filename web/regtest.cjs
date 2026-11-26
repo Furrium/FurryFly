@@ -14,6 +14,7 @@ async function startRegtest({port = DEFAULT_PORT, distDir, onError = console.err
     network: NETWORK,
     prefix: path.join(os.tmpdir(), 'transfur-web-in-memory'),
     memory: true,
+    indexTX: true,
     indexAddress: true,
     listen: false,
     noDNS: true,

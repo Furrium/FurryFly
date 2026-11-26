@@ -41,6 +41,10 @@ function getCoins(origin, addr) {
   return request(origin, `/api/coins?address=${encodeURIComponent(addr)}`);
 }
 
+function getHistory(origin, addr) {
+  return request(origin, `/api/history?address=${encodeURIComponent(addr)}`);
+}
+
 function post(origin, data) {
   return request(origin, '/api/transactions', {
     method: 'POST',
@@ -68,7 +72,7 @@ async function open(t, distDir) {
   return service;
 }
 
-test('loopback navigation allows only exact bundled assets and same-origin requests', {timeout: 10000}, async t => {
+test('loopback navigation allows exact top-level document links without weakening API or asset isolation', {timeout: 10000}, async t => {
   const {origin} = await open(t, await staticFixture(t));
   const authority = new URL(origin).host;
   assert.match(origin, /^http:\/\/127\.0\.0\.1:\d+$/);
@@ -98,6 +102,30 @@ test('loopback navigation allows only exact bundled assets and same-origin reque
   assert.equal((await request(origin, '/', {headers: ['Host', authority, 'Host', 'local.example']})).status, 403);
   assert.equal((await request(origin, '/api/status', {headers: {Origin: 'http://127.0.0.1:8'}})).status, 403);
   assert.equal((await request(origin, '/', {headers: {'Sec-Fetch-Site': 'cross-site'}})).status, 403);
+  const navigation = {
+    'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document'
+  };
+  for (const site of ['cross-site', 'same-site']) {
+    for (const path of ['/', '/index.html']) {
+      const reply = await request(origin, path, {headers: {...navigation, 'Sec-Fetch-Site': site}});
+      assert.equal(reply.status, 200);
+      assert.equal(reply.body, index.body);
+      assert.match(reply.headers['content-security-policy'], /frame-ancestors 'none'/);
+    }
+  }
+  for (const [target, method, headers] of [
+    ['/', 'HEAD', navigation], ['/', 'POST', navigation], ['/?x', 'GET', navigation],
+    ['/api/status', 'GET', navigation], ['/api/coins?address=x', 'GET', navigation],
+    ['/api/history?address=x', 'GET', navigation], ['/wallet.js', 'GET', navigation],
+    ['/signer.js', 'GET', navigation], ['/wallet.css', 'GET', navigation],
+    ['/', 'GET', {...navigation, 'Sec-Fetch-Dest': 'iframe'}],
+    ['/', 'GET', {...navigation, 'Sec-Fetch-Mode': 'no-cors'}],
+    ['/', 'GET', {...navigation, Origin: origin}],
+    ['/', 'GET', {...navigation, Origin: 'null'}],
+    ['/', 'GET', {...navigation, Host: 'local.example'}]
+  ]) {
+    assert.equal((await request(origin, target, {method, headers})).status, 403, `${method} ${target}`);
+  }
   const options = await request(origin, '/api/transactions', {method: 'OPTIONS'});
   assert.equal(options.status, 405);
   assert.equal(options.headers.allow, 'POST');
@@ -109,7 +137,8 @@ test('disposable regtest funds a mature coin and validates full signed NONE paym
   const {origin} = service;
   const fundingKey = KeyRing.generate();
   const funding = fundingKey.getAddress().toString(NETWORK);
-  const recipient = KeyRing.generate().getAddress();
+  const recipientKey = KeyRing.generate();
+  const recipient = recipientKey.getAddress();
   const destination = recipient.toString(NETWORK);
 
   assert.deepEqual(JSON.parse((await request(origin, '/api/status')).body), {network: NETWORK, height: 0});
@@ -118,6 +147,12 @@ test('disposable regtest funds a mature coin and validates full signed NONE paym
   assert.equal((await request(origin, `/api/coins?address=${funding}&address=${funding}`)).status, 400);
   assert.equal((await request(origin, `/api/coins?address=${funding}&x=ignored`)).status, 400);
   assert.equal((await getCoins(origin, 'a'.repeat(1100))).status, 414);
+  assert.deepEqual(JSON.parse((await getHistory(origin, funding)).body), {network: NETWORK, height: 0, transactions: []});
+  assert.equal((await getHistory(origin, fundingKey.getAddress().toString('main'))).status, 400);
+  assert.equal((await request(origin, '/api/history')).status, 400);
+  assert.equal((await request(origin, `/api/history?address=${funding}&address=${funding}`)).status, 400);
+  assert.equal((await request(origin, `/api/history?address=${funding}&limit=1`)).status, 400);
+  assert.equal((await getHistory(origin, 'a'.repeat(1100))).status, 414);
 
   assert.deepEqual(await service.fund(funding), {funded: funding, height: 2});
   const funded = JSON.parse((await getCoins(origin, funding.toUpperCase())).body);
@@ -164,9 +199,57 @@ test('disposable regtest funds a mature coin and validates full signed NONE paym
   assert.deepEqual(pending.coins, [{hash: transaction.txid(), index: 0, height: -1,
     value: 1000000, coinbase: false, address: destination}]);
   assert.equal(JSON.parse((await getCoins(origin, funding)).body).coins.some(c => c.hash === coin.hash), false);
+  const pendingHistory = JSON.parse((await getHistory(origin, funding.toUpperCase())).body);
+  const [sentRow, rewardRow] = pendingHistory.transactions;
+  assert.ok(sentRow.time > 0 && rewardRow.time > 0);
+  assert.deepEqual(pendingHistory, {network: NETWORK, height: 2, transactions: [{
+    txid: transaction.txid(), height: -1, time: sentRow.time, coinbase: false,
+    inputs: [{address: funding, value: coin.value}],
+    outputs: [{address: destination, value: 1000000}, {address: funding, value: coin.value - 1010000}]
+  }, {
+    txid: coin.hash, height: 1, time: rewardRow.time, coinbase: true,
+    inputs: [], outputs: [{address: funding, value: coin.value}]
+  }]});
+  assert.deepEqual(JSON.parse((await getHistory(origin, destination)).body).transactions, [sentRow]);
   assert.deepEqual(await service.mine(), {height: 3});
-  assert.deepEqual(JSON.parse((await getCoins(origin, destination)).body).coins,
-    [{...pending.coins[0], height: 3}]);
+  const [received] = JSON.parse((await getCoins(origin, destination)).body).coins;
+  assert.deepEqual(received, {...pending.coins[0], height: 3});
+  const afterMining = JSON.parse((await getHistory(origin, destination)).body);
+  assert.equal(afterMining.height, 3);
+  assert.deepEqual(afterMining.transactions, [{...sentRow, height: 3, time: afterMining.transactions[0].time}]);
+
+  const outgoing = new MTX();
+  outgoing.addCoin(Coin.fromJSON({version: 0, ...received}, NETWORK));
+  outgoing.addOutput(fundingKey.getAddress(), 990000);
+  assert.equal(outgoing.sign(recipientKey), 1);
+  const spend = outgoing.toTX();
+  assert.equal((await post(origin, {hex: spend.toHex()})).status, 200);
+  await service.mine();
+  assert.deepEqual(JSON.parse((await getCoins(origin, destination)).body).coins, []);
+  const spentHistory = JSON.parse((await getHistory(origin, destination)).body);
+  assert.equal(spentHistory.height, 4);
+  assert.deepEqual(spentHistory.transactions, [{
+    txid: spend.txid(), height: 4, time: spentHistory.transactions[0].time, coinbase: false,
+    inputs: [{address: destination, value: 1000000}], outputs: [{address: funding, value: 990000}]
+  }, ...afterMining.transactions]);
+});
+
+test('history caps indexed work and reports that its result is truncated', {timeout: 15000}, async t => {
+  const {origin, fund} = await open(t);
+  const address = KeyRing.generate().getAddress().toString(NETWORK);
+  for (let i = 0; i < 50; i++)
+    await fund(address);
+  const complete = JSON.parse((await getHistory(origin, address)).body);
+  assert.equal(complete.transactions.length, 50);
+  assert.equal(complete.truncated, undefined);
+  for (let i = 50; i < 129; i++)
+    await fund(address);
+  const capped = JSON.parse((await getHistory(origin, address)).body);
+  assert.equal(capped.height, 258);
+  assert.equal(capped.transactions.length, 50);
+  assert.equal(capped.truncated, true);
+  assert.ok(capped.transactions.every(row => row.coinbase && row.outputs[0].address === address));
+  assert.ok(capped.transactions.every((row, i, rows) => i === 0 || rows[i - 1].height > row.height));
 });
 
 test('HTTP transaction body and hex limits apply before hsd submission', {timeout: 10000}, async t => {

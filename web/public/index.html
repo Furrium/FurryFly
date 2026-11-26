@@ -4,100 +4,121 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>TRANSFUR — Browser Wallet</title>
+  <title data-i18n="app.title"></title>
   <link rel="stylesheet" href="/wallet.css">
   <script src="/wallet.js" defer></script>
 </head>
 <body>
   <header class="masthead">
-    <div class="wordmark"><span class="mark" aria-hidden="true">T</span> TRANSFUR <span class="edition">/ WEB</span></div>
-    <div class="status"><span class="network"><span aria-hidden="true">●</span> REGTEST</span><button id="lock" class="quiet" type="button" hidden>Lock wallet</button></div>
+    <div class="wordmark"><span class="mark" aria-hidden="true">T</span> <strong data-i18n="app.brand"></strong> <span class="edition" data-i18n="app.edition"></span></div>
+    <div class="status">
+      <span class="network"><span aria-hidden="true">●</span> <span data-i18n="app.network"></span></span>
+      <div id="language-picker" class="status" role="group" data-i18n-aria-label="language.label" hidden>
+        <button class="quiet" type="button" data-language="en" aria-pressed="false" data-i18n-title="language.englishTitle"><span lang="en" data-i18n="language.english"></span></button>
+        <button class="quiet" type="button" data-language="zh-CN" aria-pressed="false" data-i18n-title="language.chineseTitle"><span lang="zh-CN" data-i18n="language.chinese"></span></button>
+      </div>
+      <button id="lock" class="quiet" type="button" data-i18n="vault.lock" hidden></button>
+    </div>
   </header>
   <main>
-    <p class="eyebrow">HANDSHAKE · SELF-CUSTODY</p>
-    <h1>Browser wallet<span aria-hidden="true">.</span></h1>
-    <p class="intro">Receive and send Handshake on a local test chain. Your recovery phrase and signing keys stay in this browser.</p>
+    <p class="eyebrow" data-i18n="app.eyebrow"></p>
+    <h1 data-i18n-leading="app.heading"><span aria-hidden="true" data-i18n="app.headingEnd"></span></h1>
+    <p class="intro" data-i18n="app.intro"></p>
     <div id="message" class="message" role="status" aria-live="polite" hidden></div>
-    <div class="notice"><strong>Test funds only.</strong> Do not enter a mainnet wallet’s recovery phrase.</div>
-    <noscript>This wallet needs JavaScript and a secure browser context.</noscript>
+    <div class="notice"><strong data-i18n="app.testFunds"></strong> <span data-i18n="app.mainnetWarning"></span></div>
+    <noscript>
+      <p lang="en">This wallet needs JavaScript and a secure browser context.</p>
+      <p lang="zh-CN">此钱包需要启用 JavaScript，并在安全的浏览器环境中运行。</p>
+    </noscript>
 
     <section id="setup" class="card narrow" hidden>
-      <p class="eyebrow">01 / GET STARTED</p>
-      <h2>Set up a wallet</h2>
-      <div class="switch" aria-label="Wallet setup mode">
-        <button id="choose-create" type="button" aria-pressed="true">Create wallet</button>
-        <button id="choose-restore" type="button" aria-pressed="false">Restore wallet</button>
+      <p class="eyebrow" data-i18n="setup.eyebrow"></p>
+      <h2 data-i18n="setup.title"></h2>
+      <div class="switch" role="group" data-i18n-aria-label="setup.mode">
+        <button id="choose-create" type="button" aria-pressed="true" data-i18n="setup.create"></button>
+        <button id="choose-restore" type="button" aria-pressed="false" data-i18n="setup.restore"></button>
       </div>
       <form id="setup-form">
-        <label id="restore-field" hidden>12-word regtest recovery phrase
-          <textarea id="restore-phrase" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="240" rows="3"></textarea>
+        <label id="restore-field" hidden><span data-i18n="setup.recoveryPhrase"></span>
+          <textarea id="restore-phrase" lang="en" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="240" rows="3"></textarea>
         </label>
-        <label>Wallet password <input id="new-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
-        <label>Confirm password <input id="repeat-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
-        <p class="hint">Use at least 12 characters. This password encrypts the wallet on this device; it is not your recovery phrase.</p>
-        <button id="setup-submit" class="primary" type="submit">Create encrypted wallet</button>
+        <label><span data-i18n="vault.password"></span> <input id="new-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+        <label><span data-i18n="setup.confirmPassword"></span> <input id="repeat-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+        <p class="hint" data-i18n="setup.passwordHint"></p>
+        <button id="setup-submit" class="primary" type="submit" data-i18n="setup.createSubmit"></button>
       </form>
     </section>
 
     <section id="backup" class="card narrow" hidden>
-      <p class="eyebrow">02 / BACKUP</p>
-      <h2>Save your recovery phrase</h2>
-      <p>Write the words down in order. Anyone who has them can spend this wallet’s funds. This view closes after you confirm.</p>
-      <ol id="backup-words" class="words"></ol>
-      <label class="check"><input id="backup-saved" type="checkbox"> I saved the words in order.</label>
-      <button id="backup-done" class="primary" type="button" disabled>Continue to wallet</button>
+      <p class="eyebrow" data-i18n="backup.eyebrow"></p>
+      <h2 data-i18n="backup.title"></h2>
+      <p data-i18n="backup.hint"></p>
+      <ol id="backup-words" class="words" lang="en"></ol>
+      <label class="check"><input id="backup-saved" type="checkbox"> <span data-i18n="backup.saved"></span></label>
+      <button id="backup-done" class="primary" type="button" data-i18n="backup.continue" disabled></button>
     </section>
 
     <section id="unlock" class="card narrow" hidden>
-      <p class="eyebrow">LOCAL VAULT / LOCKED</p>
-      <h2>Unlock wallet</h2>
+      <p class="eyebrow" data-i18n="vault.eyebrow"></p>
+      <h2 data-i18n="vault.unlockTitle"></h2>
       <form id="unlock-form">
-        <label>Wallet password <input id="password" type="password" maxlength="128" autocomplete="current-password" required></label>
-        <button id="unlock-submit" class="primary" type="submit">Unlock</button>
+        <label><span data-i18n="vault.password"></span> <input id="password" type="password" maxlength="128" autocomplete="current-password" required></label>
+        <button id="unlock-submit" class="primary" type="submit" data-i18n="vault.unlockSubmit"></button>
       </form>
     </section>
 
-    <section id="wallet" class="dashboard" aria-label="Wallet" hidden>
+    <section id="wallet" class="dashboard" data-i18n-aria-label="wallet.label" hidden>
       <article class="card balance">
-        <p class="eyebrow">01 / BALANCE</p>
-        <h2>Available to spend</h2>
-        <div class="amount"><span id="available">—</span> <small>HNS</small></div>
-        <p class="hint">Pending: <span id="pending">—</span> HNS · Immature: <span id="immature">—</span> HNS</p>
-        <div class="balance-footer"><span id="chain-state">Node not checked</span><button id="refresh" class="quiet" type="button">Refresh balance</button></div>
+        <p class="eyebrow" data-i18n="balance.eyebrow"></p>
+        <h2 data-i18n="balance.title"></h2>
+        <div class="amount"><span id="available">—</span> <small data-i18n="units.hns"></small></div>
+        <p class="hint"><span data-i18n="balance.pending"></span> <span id="pending">—</span> <span data-i18n="units.hns"></span> <span aria-hidden="true">·</span> <span data-i18n="balance.immature"></span> <span id="immature">—</span> <span data-i18n="units.hns"></span></p>
+        <div class="balance-footer"><span id="chain-state" data-i18n="balance.unchecked"></span><button id="refresh" class="quiet" type="button" data-i18n="balance.refresh"></button></div>
       </article>
       <article class="card receive">
-        <p class="eyebrow">02 / RECEIVE</p>
-        <h2>Your receive address</h2>
-        <p class="hint">Use only on Handshake regtest.</p>
-        <output id="receive-address" class="address" aria-label="Receive address"></output>
-        <button id="copy" class="quiet" type="button">Copy address</button>
+        <p class="eyebrow" data-i18n="receive.eyebrow"></p>
+        <h2 data-i18n="receive.title"></h2>
+        <p class="hint" data-i18n="receive.hint"></p>
+        <output id="receive-address" class="address" data-i18n-aria-label="receive.address"></output>
+        <label class="hint" for="receive-select" data-i18n="receive.chooseAddress"></label>
+        <select id="receive-select"></select>
+        <svg id="receive-qr" class="qr" role="img" data-i18n-aria-label="receive.qrLabel"></svg>
+        <p class="hint" data-i18n="receive.qrHint"></p>
+        <button id="copy" class="quiet" type="button" data-i18n="receive.copy"></button>
       </article>
       <article class="card send">
-        <p class="eyebrow">03 / SEND</p>
-        <h2>Send HNS</h2>
+        <p class="eyebrow" data-i18n="send.eyebrow"></p>
+        <h2 data-i18n="send.title"></h2>
         <form id="send-form">
-          <label>Recipient address <input id="recipient" placeholder="rs1…" spellcheck="false" autocomplete="off" maxlength="120" required></label>
-          <label>Amount (HNS) <input id="amount" placeholder="0.000000" inputmode="decimal" autocomplete="off" maxlength="18" required></label>
-          <button id="prepare" class="primary" type="submit">Review transfer</button>
+          <label><span data-i18n="send.recipientLabel"></span> <input id="recipient" data-i18n-placeholder="send.recipientPlaceholder" spellcheck="false" autocomplete="off" maxlength="120" required></label>
+          <label><span data-i18n="send.amountLabel"></span> <input id="amount" data-i18n-placeholder="send.amountPlaceholder" inputmode="decimal" autocomplete="off" maxlength="18" required></label>
+          <button id="prepare" class="primary" type="submit" data-i18n="send.prepare"></button>
         </form>
         <dialog id="review" class="card transfer-dialog" aria-labelledby="review-title">
-          <h2 id="review-title">Confirm this transfer</h2>
+          <h2 id="review-title" data-i18n="review.title"></h2>
           <dl>
-            <dt>Recipient</dt><dd id="review-address" class="address"></dd>
-            <dt>Amount</dt><dd id="review-amount"></dd>
-            <dt>Network fee</dt><dd id="review-fee"></dd>
-            <dt>Total</dt><dd id="review-total"></dd>
+            <dt data-i18n="review.recipient"></dt><dd id="review-address" class="address"></dd>
+            <dt data-i18n="review.amount"></dt><dd id="review-amount"></dd>
+            <dt data-i18n="review.fee"></dt><dd id="review-fee"></dd>
+            <dt data-i18n="review.total"></dt><dd id="review-total"></dd>
           </dl>
-          <div class="actions"><button id="cancel" class="quiet" type="button" autofocus>Cancel</button><button id="broadcast" class="primary" type="button">Broadcast transfer</button></div>
+          <div class="actions"><button id="cancel" class="quiet" type="button" data-i18n="review.cancel" autofocus></button><button id="broadcast" class="primary" type="button" data-i18n="review.broadcast"></button></div>
         </dialog>
-        <section id="receipt" class="review" aria-label="Last broadcast" hidden>
-          <h3 id="receipt-title">Submitted to the node</h3>
-          <p id="receipt-detail" class="hint">Confirmations are not guaranteed until mined.</p>
-          <output id="txid" class="address" aria-label="Transaction ID"></output>
+        <section id="receipt" class="review" data-i18n-aria-label="receipt.label" hidden>
+          <h3 id="receipt-title" data-i18n="receipt.submitted"></h3>
+          <p id="receipt-detail" class="hint" data-i18n="receipt.submittedHint"></p>
+          <output id="txid" class="address" data-i18n-aria-label="receipt.txid"></output>
         </section>
+      </article>
+      <article class="card activity">
+        <p class="eyebrow" data-i18n="activity.eyebrow"></p>
+        <h2 data-i18n="activity.title"></h2>
+        <p id="activity-note" class="hint" hidden></p>
+        <ul id="activity-list" class="activity-list"></ul>
+        <p id="activity-empty" class="hint" data-i18n="activity.empty" hidden></p>
       </article>
     </section>
   </main>
-  <footer>TRANSFUR <span>·</span> REGTEST PREVIEW <span>·</span> NO DESKTOP APP REQUIRED</footer>
+  <footer data-i18n="app.footer"></footer>
 </body>
 </html>

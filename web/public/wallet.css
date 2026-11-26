@@ -101,3 +101,28 @@ footer span { color: var(--accent); }
   .card, button, input, textarea { border-color: ButtonText; }
   .switch button[aria-pressed=true], :focus-visible { outline: 2px solid Highlight; }
 }
+
+select {
+  inline-size: 100%; min-block-size: var(--target); margin-block: .35rem .75rem;
+  padding: .45rem .55rem; border: 1px solid var(--line); border-radius: .48rem;
+  background: #111117; color: var(--ink); font: inherit;
+}
+.qr { display: block; inline-size: min(100%, 13rem); block-size: auto; margin-block: .65rem;
+  padding: .55rem; border-radius: .55rem; background: #fff; }
+.activity { grid-column: 1 / -1; }
+.activity-list { list-style: none; display: grid; gap: 0; margin: .6rem 0 0; padding: 0; }
+.activity-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem .8rem;
+  padding-block: .7rem; border-block-start: 1px solid var(--line); }
+.activity-row:first-child { border-block-start: 0; padding-block-start: 0; }
+.activity-kind { font-weight: 700; }
+.activity-amount { font-variant-numeric: tabular-nums; font-weight: 700; }
+.activity-amount.positive { color: var(--accent); }
+.activity-amount.negative { color: var(--warning); }
+.activity-meta { grid-column: 1 / -1; color: var(--muted); font-size: .8rem; }
+.activity-state { justify-self: end; color: var(--muted); font-size: .8rem; text-align: end; }
+.activity-state.pending, .activity-state.immature { color: var(--warning); }
+.activity-txid { grid-column: 1 / -1; color: var(--muted); font-size: .72rem; overflow-wrap: anywhere; }
+@media (max-width: 360px) {
+  .activity-row { grid-template-columns: 1fr; }
+  .activity-state { justify-self: start; text-align: start; }
+}

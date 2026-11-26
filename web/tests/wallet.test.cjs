@@ -39,8 +39,10 @@ test('BIP39 checksums and regtest receive/change derivation are enforced', () =>
   assert.equal(generated.split(' ').length, 12);
   assert.equal(openWallet(generated).phrase, generated);
   assert.throws(() => openWallet('abandon '.repeat(12)), /checksum/);
-  const {addresses} = openWallet(phrase);
-  assert.notEqual(addresses[0], addresses[1]);
+  const {addresses, receiveAddresses, changeRing} = openWallet(phrase);
+  assert.equal(receiveAddresses.length, 5);
+  assert.equal(new Set(addresses).size, 6);
+  assert.deepEqual(addresses, [...receiveAddresses, changeRing.getAddress().toString('regtest')]);
   assert.deepEqual(openWallet(phrase.toUpperCase()).addresses, addresses);
   assert.ok(addresses.every(address => /^rs1/.test(address)));
 });
@@ -50,7 +52,7 @@ test('transaction review applies network, ownership, maturity, dust and fee cons
   const ring = KeyRing.generate();
   const recipient = ring.getAddress().toString('regtest');
   const coin = {hash: '01'.repeat(32), index: 0, height: 8, value: 3_000_000,
-    coinbase: true, address: wallet.addresses[0]};
+    coinbase: true, address: wallet.receiveAddresses[4]};
   const draft = {wallet, recipient, amount: '1.25', height: 9, coins: [coin]};
   await assert.rejects(prepareTransfer({...draft, height: 8}), /No confirmed, mature funds/);
   await assert.rejects(prepareTransfer({...draft, coins: [coin, coin]}), /duplicate/);
@@ -65,6 +67,6 @@ test('transaction review applies network, ownership, maturity, dust and fee cons
   const {txid, hex} = prepared.finalize();
   const tx = TX.decode(Buffer.from(hex, 'hex'));
   assert.equal(tx.txid(), txid);
-  assert.deepEqual(tx.outputs.map(output => output.address.toString('regtest')), [recipient, wallet.addresses[1]]);
+  assert.deepEqual(tx.outputs.map(output => output.address.toString('regtest')), [recipient, wallet.changeRing.getAddress().toString('regtest')]);
   assert.deepEqual(tx.outputs.map(output => output.value), [1_250_000, 1_750_000 - prepared.review.fee]);
 });

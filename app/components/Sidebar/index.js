@@ -89,7 +89,7 @@ class Sidebar extends Component {
             && !new URLSearchParams(location.search || '').get('asset')
           )
           : undefined}
-        className={isActive => `sidebar__action ${isActive ? "sidebar__action--selected" : ''}`}
+        className="sidebar__action"
       >
         {t(label)}
       </NavLink>
@@ -99,6 +99,7 @@ class Sidebar extends Component {
   renderGroup(id, label, items) {
     const {t} = this.context;
     const open = !!this.state.openGroups[id];
+    const bodyId = `sidebar-group-${id}`;
 
     return (
       <div className="sidebar__group" key={id}>
@@ -106,6 +107,7 @@ class Sidebar extends Component {
           type="button"
           className="sidebar__section sidebar__section--clickable sidebar__group-toggle"
           aria-expanded={open}
+          aria-controls={bodyId}
           onClick={() => this.toggleGroup(id)}
         >
           <span>{t(label)}</span>
@@ -114,7 +116,8 @@ class Sidebar extends Component {
             aria-hidden="true"
           />
         </button>
-        <div className="sidebar__group-body" data-open={open ? 'true' : 'false'}>
+        {/* React 18 needs the bare HTML inert attribute passed as an empty string. */}
+        <div id={bodyId} className="sidebar__group-body" inert={open ? undefined : ''}>
           <div className="sidebar__actions">
             {items.map(item => this.renderLink(item.to, item.label, item))}
           </div>
@@ -173,8 +176,8 @@ class Sidebar extends Component {
     }
 
     return (
-      <React.Fragment>
-        <div className="sidebar__section">{title}</div>
+      <nav aria-labelledby="sidebar-wallet-title">
+        <div id="sidebar-wallet-title" className="sidebar__section">{title}</div>
         <div className="sidebar__actions">
           {this.renderLink('/overview', 'headingOverview')}
 
@@ -196,7 +199,7 @@ class Sidebar extends Component {
             {to: '/messages', label: 'headingMessages'},
           ])}
         </div>
-      </React.Fragment>
+      </nav>
     );
   }
 

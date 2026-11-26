@@ -6,6 +6,10 @@
   "description": "TRANSFUR - a Handshake wallet, name auction manager and full node.",
   "scripts": {
     "build": "node ./scripts/package.js",
+    "build:web-wallet": "webpack --config web/webpack.config.cjs",
+    "start:web-wallet": "node web/regtest.cjs serve",
+    "test:web-wallet": "node --test web/tests/*.test.cjs",
+    "test:web-wallet:browser": "node web/tests/browser.e2e.cjs",
     "build-renderer": "cross-env NODE_ENV=production webpack --config ./configs/webpack.config.renderer.prod.babel.js",
     "dev": "cross-env START_HOT=1 npm run start-renderer-dev",
     "package-dir": "npm run build && node scripts/package-desktop.js --dir",

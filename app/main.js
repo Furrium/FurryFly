@@ -65,20 +65,6 @@ let earlyStartupError = null;
 let runtimeModules = null;
 let startupFailureHandled = false;
 let pendingStartupDeeplinks = [];
-const appRuntimeHints = [
-  app.getName(),
-  process.execPath,
-  process.resourcesPath || '',
-  process.argv.join(' '),
-].join(' ');
-// Detects a branded build of this fork: the packaged app name, the packaged
-// appId, or either opt-in environment variable.
-const isLearnHnsForkBuild = process.env.BOB_LEARNHNS_TEST === 'true'
-  || process.env.BOB_LEARNHNS_FORK === 'true'
-  || appRuntimeHints.includes(BRAND.displayName)
-  || appRuntimeHints.includes(`${BRAND.displayName} Test`)
-  || appRuntimeHints.includes(BRAND.appId)
-  || appRuntimeHints.includes(`${BRAND.appId}Test`);
 
 let packagedAcceptanceConfig = null;
 try {
@@ -111,21 +97,19 @@ if (packagedErrorMonitor) {
   };
 }
 
-if (isLearnHnsForkBuild) {
-  process.env.BOB_LEARNHNS_FORK = 'true';
-  process.env.BOB_LEARNHNS_TEST = 'true';
-  app.setName(BRAND.displayName);
-}
+// Source launches use the same identity and port offset as packaged TRANSFUR.
+process.env.BOB_LEARNHNS_FORK = 'true';
+process.env.BOB_LEARNHNS_TEST = 'true';
+app.setName(BRAND.displayName);
 
-// Pinned on every start, not only under the fork flag.
+// Pin the profile on every start.
 //
 // Electron would otherwise derive the profile directory from package.json, which is a
 // second source of truth for a decision branding.js already makes. The two agreed while
 // the product name and the directory name were spelled the same, so nothing broke - but
 // they stop agreeing the moment either changes, and the failure is silent: the app comes
-// up on an empty profile while the real one sits untouched beside it. Pinning the path
-// here also means the carry-over below is reached regardless of how the fork flag was
-// decided, so a renamed build adopts the previous profile instead of abandoning it.
+// up on an empty profile while the real one sits untouched beside it. Resolve the legacy
+// profile here so a renamed build adopts it instead of abandoning it.
 const smokeUserData = process.env.BOB_SMOKE_USER_DATA;
 const isolatedUserData = isPackagedSmokeTest && smokeUserData && path.isAbsolute(smokeUserData)
   ? smokeUserData
@@ -140,11 +124,14 @@ app.setPath('userData', isolatedUserData || resolveUserDataDir({
 // Carried out here, before any service resolves the node prefix, so a rename of the
 // product does not strand an existing chain on the previous path. A no-op once moved,
 // when the preferred drive is absent, and when the user has chosen their own directory.
-resolveChainDir({
-  target: BRAND.chainDir,
-  legacyDirs: BRAND.legacyChainDirs,
-  log: console.error,
-});
+// The legacy paths are Windows drive paths. Test runs must never move real data.
+if (process.platform === 'win32' && !isPackagedTestMode) {
+  resolveChainDir({
+    target: BRAND.chainDir,
+    legacyDirs: BRAND.legacyChainDirs,
+    log: console.error,
+  });
+}
 
 try {
   if (!isPackagedTestMode) {
@@ -246,7 +233,7 @@ let deeplinkingUrl;
 const isPrimaryInstance = app.requestSingleInstanceLock();
 
 // Only the instance that owns the app may touch the registry.
-if (!isPackagedTestMode && isPrimaryInstance) {
+if (process.platform === 'win32' && !isPackagedTestMode && isPrimaryInstance) {
   adoptCompatProtocols();
 }
 
@@ -473,7 +460,7 @@ if (isPrimaryInstance) {
     app.on('window-all-closed', () => {
       // Respect the macOS convention of having the application in memory even
       // after all windows have been closed
-      if (process.platform !== 'darwin') {
+      if (process.platform !== 'darwin' && !isPackagedSmokeTest) {
         app.quit();
       }
     });

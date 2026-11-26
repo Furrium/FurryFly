@@ -2,6 +2,9 @@
 
 .sidebar {
   @extend %col-nowrap;
+  --sidebar-target-size: 24px;
+  --sidebar-focus-color: var(--fns-text);
+
   background-color: var(--fns-surface);
   // Tone, not shadow: the reference language separates surfaces by value, and a 1px
   // hairline reads as a divider where a blur reads as a floating panel.
@@ -33,6 +36,7 @@
     justify-content: flex-start;
     padding: 0 2rem 0 1.5rem;
     flex: 1 1 auto;
+    min-block-size: 0;
     overflow-y: auto;
   }
 
@@ -46,6 +50,7 @@
     letter-spacing: 0.14em;
     text-transform: uppercase;
     padding: 0.5rem 0.75rem 0.5rem 0;
+    overflow-wrap: anywhere;
 
     &--clickable {
       cursor: pointer;
@@ -58,11 +63,14 @@
   }
 
   &__action {
-    @extend %link;
+    display: flex;
+    align-items: center;
     color: var(--fns-text-secondary);
     font-size: 0.8rem;
     padding: 0.75rem 1rem;
-    margin: 0.2rem 0 0.2rem -1rem;
+    margin-block: 0.2rem;
+    margin-inline-start: -1rem;
+    overflow-wrap: anywhere;
     font-weight: 600;
     // Matches the rest of the app's motion scale instead of its own 250ms/200ms pair,
     // and tints with the brand colour rather than the blue accent.
@@ -76,19 +84,23 @@
     text-decoration: none;
     cursor: pointer;
 
-    &:hover {
-      background-color: rgb(var(--fns-brand-rgb, 92 255 208) / 0.08);
-      color: var(--fns-text);
-      transform: translateX(2px);
+    @media (hover: hover) {
+      &:hover {
+        background-color: rgb(var(--fns-brand-rgb, 92 255 208) / 0.08);
+        color: var(--fns-text);
+        transform: translateX(2px);
+      }
+
+      &:active {
+        transform: translateX(2px) scale(0.99);
+      }
     }
 
-    &:active {
-      transform: translateX(2px) scale(0.99);
-    }
-
-    &--selected {
+    &[aria-current='page'] {
       background-color: rgb(var(--fns-brand-rgb, 92 255 208) / 0.14);
-      color: var(--fns-brand);
+      color: var(--fns-text);
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
 
       &:hover {
         background-color: rgb(var(--fns-brand-rgb, 92 255 208) / 0.14);
@@ -112,11 +124,15 @@
     width: 100%;
     border: 0;
     background: none;
+    border-radius: 0.5rem;
+    color: var(--fns-text-secondary);
     font-family: inherit;
-    text-align: left;
+    text-align: start;
 
-    &:hover {
-      color: var(--fns-text-secondary);
+    @media (hover: hover) {
+      &:hover {
+        color: var(--fns-text);
+      }
     }
   }
 
@@ -136,28 +152,31 @@
     transform: rotate(45deg);
   }
 
-  // 0fr -> 1fr animates to the content's natural height without hard-coding it, which
-  // matters here because the item count differs per group.
+  // The grid clips the slide visually; inert separately disables focus, clicks and
+  // accessibility exposure from the moment the group starts collapsing.
   &__group-body {
     display: grid;
-    grid-template-rows: 0fr;
+    grid-template-rows: 1fr;
     transition: grid-template-rows var(--fns-motion-base, 220ms) var(--fns-motion-ease-out, ease);
 
-    > * {
-      overflow: hidden;
+    &[inert] {
+      grid-template-rows: 0fr;
     }
 
-    &[data-open='true'] {
-      grid-template-rows: 1fr;
+    // A fast Tab into an opening group must not leave its focused link clipped.
+    &:focus-within {
+      transition: none;
     }
 
     .sidebar__actions {
+      overflow: hidden;
       margin-bottom: 0;
     }
 
-    // Indented against the group header so the hierarchy is visible without a rule.
+    // Keep the focus outline and the indented links inside the clipping box.
     .sidebar__action {
-      padding-left: 1.75rem;
+      margin-inline-start: 0;
+      padding-inline-start: 0.75rem;
     }
   }
 
@@ -199,7 +218,8 @@
     }
 
     &__simnet-controls {
-      @extend %row-nowrap;
+      display: flex;
+      flex-wrap: wrap;
 
       button {
         cursor: pointer;
@@ -219,6 +239,41 @@
       @extend %btn-secondary;
       padding: 0.5rem;
       text-align: center;
+    }
+  }
+
+  &__action,
+  &__group-toggle,
+  &__generate-btn,
+  &__footer__update-notif {
+    min-inline-size: var(--sidebar-target-size);
+    min-block-size: var(--sidebar-target-size);
+
+    &:focus-visible {
+      outline: 2px solid var(--sidebar-focus-color);
+      outline-offset: -2px;
+    }
+  }
+
+  @media (any-pointer: coarse) {
+    --sidebar-target-size: 44px;
+  }
+
+  @media (forced-colors: active) {
+    --sidebar-focus-color: Highlight;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__action,
+    &__group-body,
+    &__group-chevron,
+    &__footer__update-notif {
+      transition: none;
+    }
+
+    &__action:hover,
+    &__action:active {
+      transform: none;
     }
   }
 

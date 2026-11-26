@@ -1,7 +1,7 @@
 {
   "name": "transfur-wallet",
   "productName": "TRANSFUR",
-  "author": "Kyokan Group, Inc.",
+  "author": "Furrium",
   "version": "0.1.0",
   "description": "TRANSFUR - a Handshake wallet, name auction manager and full node.",
   "scripts": {

@@ -51,6 +51,7 @@ const copy = {
   'balance.pending': ['Pending:', '待确认：'],
   'balance.immature': ['Immature:', '未成熟：'],
   'balance.refresh': ['Refresh balance', '刷新余额'],
+  'balance.recoveryScope': ['Recovery checks only the first account: 20 receive and 20 change addresses. Funds outside this range are not displayed.', '恢复仅检查第一个账户的前 20 个收款地址和前 20 个找零地址，超出范围的资金不会显示。'],
   'balance.unchecked': ['Node not checked', '尚未检查节点'],
   'balance.unavailable': ['Node not available', '节点不可用'],
   'balance.block': ['Regtest · block {height}', '回归测试网 · 区块高度 {height}'],

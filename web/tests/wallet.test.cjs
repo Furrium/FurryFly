@@ -40,9 +40,11 @@ test('BIP39 checksums and regtest receive/change derivation are enforced', () =>
   assert.equal(openWallet(generated).phrase, generated);
   assert.throws(() => openWallet('abandon '.repeat(12)), /checksum/);
   const {addresses, receiveAddresses, changeRing} = openWallet(phrase);
-  assert.equal(receiveAddresses.length, 5);
-  assert.equal(new Set(addresses).size, 6);
-  assert.deepEqual(addresses, [...receiveAddresses, changeRing.getAddress().toString('regtest')]);
+  assert.equal(receiveAddresses.length, 20);
+  assert.equal(addresses.length, 40);
+  assert.equal(new Set(addresses).size, 40);
+  assert.deepEqual(addresses.slice(0, 20), receiveAddresses);
+  assert.equal(addresses[20], changeRing.getAddress().toString('regtest'));
   assert.deepEqual(openWallet(phrase.toUpperCase()).addresses, addresses);
   assert.ok(addresses.every(address => /^rs1/.test(address)));
 });

@@ -11,8 +11,17 @@ class StaticFiles {
       compilation.hooks.processAssets.tap({name: 'WebWalletStaticFiles',
         stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL}, () => {
         for (const name of ['index.html', 'wallet.css', '_headers']) {
-          const source = fs.readFileSync(path.join(__dirname, 'public', name));
-          compilation.emitAsset(name, new webpack.sources.RawSource(source));
+          const file = path.join(__dirname, 'public', name);
+          compilation.fileDependencies.add(file);
+          const source = fs.readFileSync(file, 'utf8');
+          if (name === 'wallet.css') {
+            const tokens = path.join(__dirname, '..', 'app', 'tokens.scss');
+            compilation.fileDependencies.add(tokens);
+            const {css} = require('sass').compile(tokens, {style: 'compressed'});
+            compilation.emitAsset(name, new webpack.sources.RawSource(`${css}\n${source}`));
+          } else {
+            compilation.emitAsset(name, new webpack.sources.RawSource(source));
+          }
         }
       });
     });

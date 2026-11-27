@@ -82,10 +82,13 @@ function renderNetwork() {
 
 async function loadNetwork() {
   const status = await api('/api/status');
-  if (!['regtest', 'main'].includes(status.network) || !Number.isInteger(status.coinbaseMaturity)) {
+  const expectedMaturity = {regtest: 2, main: 100};
+  if (!Object.hasOwn(expectedMaturity, status.network)
+      || (status.coinbaseMaturity !== undefined && status.coinbaseMaturity !== expectedMaturity[status.network])) {
     throw i18nError('error.nodeNetwork');
   }
-  network = {name: status.network, maturity: status.coinbaseMaturity};
+  network = {name: status.network, maturity: expectedMaturity[status.network]};
+  $('recovery-scope').hidden = network.name !== 'regtest';
   dbName = `transfur-${network.name === 'main' ? 'mainnet' : network.name}-wallet`;
   renderNetwork();
 }
@@ -244,10 +247,21 @@ async function api(path, payload) {
   return response.json();
 }
 
+async function readAddressPages(endpoint, owned, current) {
+  const pages = [];
+  // Avoid flooding the service when restoring a wider window of addresses.
+  for (let offset = 0; offset < owned.length && current(); offset += 8) {
+    pages.push(...await Promise.all(owned.slice(offset, offset + 8).map(address => (
+      api(`${endpoint}?address=${encodeURIComponent(address)}`)
+    ))));
+  }
+  return current() ? pages : null;
+}
+
 async function readFunds(current) {
   const owned = addresses;
-  const pages = await Promise.all(owned.map(address => api(`/api/coins?address=${encodeURIComponent(address)}`)));
-  if (!current()) return null;
+  const pages = await readAddressPages('/api/coins', owned, current);
+  if (!pages) return null;
   const height = pages[0].height;
   if (pages.some(page => page.network !== network.name || page.height !== height || !Array.isArray(page.coins))) {
     throw i18nError('error.nodeNetwork');
@@ -263,7 +277,7 @@ async function refresh(current) {
     let available = 0, pending = 0, immature = 0;
     for (const coin of snapshot.coins) {
       if (coin.height < 0) pending += coin.value;
-      else if (isSpendable(coin, snapshot.height)) available += coin.value;
+      else if (isSpendable(coin, snapshot.height, network.maturity)) available += coin.value;
       else immature += coin.value;
     }
     $('available').textContent = formatAmount(available);
@@ -361,8 +375,8 @@ function renderActivity() {
 
 async function loadActivity(current) {
   const owned = addresses;
-  const pages = await Promise.all(owned.map(address => api(`/api/history?address=${encodeURIComponent(address)}`)));
-  if (!current()) return null;
+  const pages = await readAddressPages('/api/history', owned, current);
+  if (!pages) return null;
   const height = pages[0]?.height;
   if (!Number.isSafeInteger(height) || pages.some(page => page.network !== network.name || page.height !== height
       || !Array.isArray(page.transactions))) {

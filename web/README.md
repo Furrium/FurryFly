@@ -1,8 +1,9 @@
 # TRANSFUR browser wallet — Regtest preview
 
-This is a separate browser-only client. It does not start or need Electron,
-never uses mainnet, and has not been audited for real funds. **Never paste a real
-wallet's recovery phrase into this preview.**
+This is a separate browser-only client. It does not start or need Electron. It
+defaults to regtest; an optional local mainnet preview is documented below, but
+nothing in this repository has been audited for real funds. **Never paste a real
+wallet's recovery phrase into the regtest preview.**
 
 ## Run locally
 
@@ -41,9 +42,9 @@ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=url.https://github.com/.insteadOf \
 ## Serverless integration (not deployed)
 
 Serve the generated static files in `web/dist/` over HTTPS. Route exactly
-`/api/status`, `/api/coins` and `/api/transactions` to the same-origin **Node.js**
-serverless function. This repo ships a Fetch `Request` → `Response` adapter, not
-a deployment for a specific provider:
+`/api/status`, `/api/coins`, `/api/history` and `/api/transactions` to the
+same-origin **Node.js** serverless function. This repo ships a Fetch `Request`
+→ `Response` adapter, not a deployment for a specific provider:
 
 ```js
 // Set NODE_BACKEND=js in the function environment before importing hsd.
@@ -60,7 +61,8 @@ const handle = createHandler({env: process.env});
 | `TRANSFUR_HSD_URL` | Separate fixed HTTPS origin of the regtest hsd full node. |
 | `TRANSFUR_HSD_API_KEY` | The upstream hsd Basic Auth password; put in function secrets only. |
 
-A **long-running** hsd full node with `index-address=true` is still required.
+A **long-running** hsd full node with `index-address=true` and `index-tx=true`
+is still required; history requests fail closed when either index is missing.
 Serverless replaces the HTTP application process, not the chain or index. Run
 hsd behind an authenticated/private HTTPS ingress and give only the functions
 network access. Endpoint input is bounded; there is no generic RPC proxy, wallet
@@ -84,13 +86,36 @@ limits before hosting for anyone else. This version has not been deployed.
   is signed only after confirming the reviewed recipient, amount and fee. Locking
   terminates the worker; this does not guarantee memory zeroization in JavaScript.
   Anyone controlling the app origin or browser can still compromise its wallet.
-- Only regtest payments (`NONE` outputs), one fixed receive and one change
-  address (BIP44 account 0, index 0), and confirmed/mature inputs. No gap scan,
-  old account discovery, history index, Ledger, auctions or mainnet support.
-- A trusted index provides balances and coin metadata; this client is not an
-  SPV verifier. The server sees public queried addresses and signed transactions,
-  not the phrase or password. Clearing browser data can remove the local vault;
-  the phrase is the only recovery method.
+- Only regtest payments (`NONE` outputs), five fixed receive addresses plus one
+  change address (BIP44 account 0, indexes 0–4), and confirmed/mature inputs.
+  The interface supports English and Simplified Chinese, follows the browser
+  language by default, and remembers the choice. No gap scan, old account
+  discovery, Ledger, auctions or mainnet support.
+- Recent activity comes from a capped, indexed history view. Pending rows,
+  confirmations and immature rewards are displayed; incomplete input data is
+  never guessed into a direction, and a capped result is labelled as truncated.
+- A trusted index provides balances, history and coin metadata; this client is
+  not an SPV verifier. The server sees public queried addresses and signed
+  transactions, not the phrase or password. Clearing browser data can remove the
+  local vault; the phrase is the only recovery method.
+
+## Mainnet preview (only after a full sync)
+
+The same static wallet can run against mainnet when the API is started with
+`TRANSFUR_WEB_NETWORK=main`. It uses `hs1…` addresses, mainnet coinbase maturity,
+a separate browser vault (`transfur-mainnet-wallet`) and the `MAINNET` label.
+
+```sh
+# The node needs a fully synced main directory with both indexes.
+TRANSFUR_MAINNET_PREFIX=/path/to/mainnet-profile \
+  npm run start:web-mainnet
+# Open http://127.0.0.1:18445
+```
+
+The server creates no management RPC and binds the wallet API to loopback only.
+Do not expose it publicly. Do not use it until the local node reports the mainnet
+tip and you have tested with a tiny amount; this browser wallet has not been
+audited for real funds. The serverless adapter is still regtest-only.
 
 ## Verify
 
@@ -106,8 +131,12 @@ to its absolute `node_modules/playwright` path, or make it resolvable from
 this checkout. Install Playwright's Chromium for the default launch, or set
 `TRANSFUR_BROWSER_CHANNEL=chrome` to use an existing Google Chrome. The test
 starts its own regtest with a random port, blocks non-local requests, checks the
-320px layout and the native confirmation dialog's keyboard behavior, mines a
-browser-signed payment, and checks vault persistence and recovery.
+320px layout, the receive QR and five address choices, the native confirmation
+dialog's keyboard behavior, the English/Chinese switch, pending and confirmed
+activity, a browser-signed payment, and vault persistence and recovery. A second
+isolated check mocks a mainnet API and verifies the `MAINNET` label, `hs1`
+address, mainnet confirmation maturity, and `transfur-mainnet-wallet` vault name
+without any real funds.
 
 ## Web platform guidance
 

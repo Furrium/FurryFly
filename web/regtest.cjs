@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const {randomBytes} = require('node:crypto');
 const {createInterface} = require('node:readline');
+process.env.TRANSFUR_WEB_NETWORK = 'regtest';
 const {DEFAULT_PORT, NETWORK, parseAddress, startGateway} = require('./gateway.cjs');
 const FullNode = require('hsd/lib/node/fullnode');
 const Address = require('hsd/lib/primitives/address');
@@ -14,6 +15,7 @@ async function startRegtest({port = DEFAULT_PORT, distDir, onError = console.err
     network: NETWORK,
     prefix: path.join(os.tmpdir(), 'transfur-web-in-memory'),
     memory: true,
+    indexTX: true,
     indexAddress: true,
     listen: false,
     noDNS: true,

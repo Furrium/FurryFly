@@ -33,11 +33,12 @@ self.addEventListener('message', async ({data: {id, type, payload}}) => {
     }
     if (!['create', 'restore', 'unlock'].includes(type) || wallet) throw new Error('Invalid wallet operation.');
     const source = type === 'create' ? newPhrase() : type === 'restore' ? payload.phrase
-      : await decryptMnemonic(payload.vault, payload.password);
-    const {rings, addresses, phrase} = openWallet(source);
-    const vault = type === 'unlock' ? undefined : await encryptMnemonic(phrase, payload.password);
-    wallet = {rings, addresses};
-    respond({addresses, vault, backup: type === 'create' ? phrase : undefined});
+      : await decryptMnemonic(payload.vault, payload.password, payload.network);
+    const opened = openWallet(source, payload.network);
+    const {rings, addresses, receiveAddresses, changeRing, phrase} = opened;
+    const vault = type === 'unlock' ? undefined : await encryptMnemonic(phrase, payload.password, payload.network);
+    wallet = {rings, addresses, changeRing, networkName: opened.networkName, maturity: opened.maturity};
+    respond({addresses, receiveAddresses, vault, backup: type === 'create' ? phrase : undefined});
   } catch (error) {
     respond(null, error instanceof Error ? error.message : 'The local signer could not complete this operation.');
   } finally {

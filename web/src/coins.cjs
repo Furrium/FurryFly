@@ -1,5 +1,4 @@
 const {isMoney} = require('./units.cjs');
-const COINBASE_MATURITY = 2;
 const MAX_WALLET_COINS = 512;
 
 function validateCoins(coins, addresses, height) {
@@ -23,8 +22,8 @@ function validateCoins(coins, addresses, height) {
   });
 }
 
-function isSpendable(coin, height) {
-  return coin.value > 0 && coin.height >= 0 && (!coin.coinbase || height + 1 - coin.height >= COINBASE_MATURITY);
+function isSpendable(coin, height, maturity = 2) {
+  return coin.value > 0 && coin.height >= 0 && (!coin.coinbase || height + 1 - coin.height >= maturity);
 }
 
-module.exports = {COINBASE_MATURITY, isSpendable, validateCoins};
+module.exports = {isSpendable, validateCoins};

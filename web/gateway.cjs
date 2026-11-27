@@ -8,8 +8,14 @@ const {constants, promises: fs} = require('node:fs');
 process.env.NODE_BACKEND = 'js';
 const Address = require('hsd/lib/primitives/address');
 const TX = require('hsd/lib/primitives/tx');
+const Network = require('hsd/lib/protocol/network');
+const {T: addressTX} = require('hsd/lib/blockchain/layout');
+const {HISTORY_CANDIDATES, collectHistory} = require('./history.cjs');
 
-const NETWORK = 'regtest';
+const NETWORK = process.env.TRANSFUR_WEB_NETWORK || 'regtest';
+if (!['regtest', 'main'].includes(NETWORK))
+  throw new Error('TRANSFUR_WEB_NETWORK must be regtest or main.');
+const network = Network.get(NETWORK);
 const HOST = '127.0.0.1';
 const DEFAULT_PORT = 8080;
 const DIST = path.join(__dirname, 'dist');
@@ -29,6 +35,7 @@ const STATIC = new Map([
 const API = new Map([
   ['/api/status', 'GET'],
   ['/api/coins', 'GET'],
+  ['/api/history', 'GET'],
   ['/api/transactions', 'POST']
 ]);
 
@@ -75,8 +82,8 @@ function parseAddress(text) {
   try {
     if (typeof text !== 'string' || text.length > 90)
       throw new Error();
-    const address = Address.fromString(text, NETWORK);
-    if (!plainAddress(address) || text.toLowerCase() !== address.toString(NETWORK))
+    const address = Address.fromString(text, network);
+    if (!plainAddress(address) || text.toLowerCase() !== address.toString(network))
       throw new Error();
     return address;
   } catch {
@@ -167,11 +174,15 @@ async function submitTransaction(node, req) {
   return {txid: tx.txid()};
 }
 
-async function getCoins(node, query) {
+function queryAddress(query) {
   const params = [...new URLSearchParams(query)];
   if (params.length !== 1 || params[0][0] !== 'address')
     throw new RequestError(400, 'Expected exactly one address parameter.');
-  const address = parseAddress(params[0][1]);
+  return parseAddress(params[0][1]);
+}
+
+async function getCoins(node, query) {
+  const address = queryAddress(query);
   // The shared hsd chain/mempool lock gives us a consistent block height and UTXO view.
   const unlock = await node.chain.locker.lock();
   try {
@@ -183,9 +194,61 @@ async function getCoins(node, query) {
         height: coin.height,
         value: coin.value,
         coinbase: coin.coinbase,
-        address: coin.address.toString(NETWORK)
+        address: coin.address.toString(network)
       }));
     return {network: NETWORK, height: node.chain.height, coins};
+  } finally {
+    unlock();
+  }
+}
+
+async function getHistory(node, query) {
+  const address = queryAddress(query);
+  const chain = node.chain.db;
+  if (!chain.options.indexAddress || !chain.options.indexTX || !node.mempool.options.indexAddress)
+    throw new RequestError(503, 'History requires transaction and address indexes.');
+
+  // One snapshot, with a hard candidate cap before fetching transactions or input views.
+  const unlock = await node.chain.locker.lock();
+  try {
+    const candidates = [];
+    let truncated = false;
+    const hash = Address.getHash(address);
+    const pending = node.mempool.txIndex.index.get(hash);
+    if (pending) {
+      for (const entry of pending.values()) {
+        if (candidates.length === HISTORY_CANDIDATES) {
+          truncated = true;
+          break;
+        }
+        candidates.push({tx: entry.tx, height: -1, time: entry.time});
+      }
+    }
+
+    // hsd's getMetaByAddress materializes the whole address range and has no limit.
+    // Read its exact T[addr-hash][txid] range directly, with a one-key lookahead.
+    if (!truncated) {
+      const remaining = HISTORY_CANDIDATES - candidates.length;
+      const hashes = await chain.db.keys({
+        gte: addressTX.min(hash),
+        lte: addressTX.max(hash),
+        limit: remaining + 1,
+        parse: key => addressTX.decode(key)[1]
+      });
+      truncated = hashes.length > remaining;
+      for (const txid of hashes.slice(0, remaining)) {
+        const meta = await chain.getMeta(txid);
+        if (!meta || !meta.tx.hash().equals(txid))
+          throw new Error('Invalid regtest history index entry.');
+        candidates.push(meta);
+      }
+    }
+
+    return await collectHistory(node.chain.height, address, candidates, truncated, async ({tx, height}) => {
+      // Use the no-lock variants while holding the shared chain/mempool lock.
+      const view = height === -1 ? await node.mempool._getSpentView(tx) : await chain.getSpentView(tx);
+      return tx.inputs.map(input => view.getOutputFor(input));
+    }, NETWORK);
   } finally {
     unlock();
   }
@@ -225,7 +288,11 @@ async function handle(req, res, {node, distDir, authority}) {
   if (req.headers.origin !== undefined && req.headers.origin !== origin)
     throw new RequestError(403, 'Cross-origin requests are not allowed.');
   const fetchSite = req.headers['sec-fetch-site'];
-  if (fetchSite !== undefined && fetchSite !== 'same-origin' && fetchSite !== 'none')
+  const topLevelNavigation = (fetchSite === 'cross-site' || fetchSite === 'same-site')
+    && req.method === 'GET' && (req.url === '/' || req.url === '/index.html')
+    && req.headers.origin === undefined && req.headers['sec-fetch-mode'] === 'navigate'
+    && req.headers['sec-fetch-dest'] === 'document';
+  if (fetchSite !== undefined && fetchSite !== 'same-origin' && fetchSite !== 'none' && !topLevelNavigation)
     throw new RequestError(403, 'Cross-origin requests are not allowed.');
 
   const target = req.url;
@@ -246,7 +313,7 @@ async function handle(req, res, {node, distDir, authority}) {
       || Number(req.headers['content-length']) > 0)) {
     throw new RequestError(400, 'A request body is not allowed here.');
   }
-  if (pathname !== '/api/coins' && query !== null)
+  if (pathname !== '/api/coins' && pathname !== '/api/history' && query !== null)
     throw new RequestError(400, 'Query parameters are not allowed here.');
 
   if (asset) {
@@ -259,11 +326,15 @@ async function handle(req, res, {node, distDir, authority}) {
     return;
   }
   if (pathname === '/api/status') {
-    sendJSON(res, 200, {network: NETWORK, height: node.chain.height});
+    sendJSON(res, 200, {network: NETWORK, height: node.chain.height, coinbaseMaturity: network.coinbaseMaturity});
     return;
   }
   if (pathname === '/api/coins') {
     sendJSON(res, 200, await getCoins(node, query || ''));
+    return;
+  }
+  if (pathname === '/api/history') {
+    sendJSON(res, 200, await getHistory(node, query || ''));
     return;
   }
   sendJSON(res, 200, await submitTransaction(node, req));

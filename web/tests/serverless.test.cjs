@@ -10,7 +10,9 @@ process.env.NODE_BACKEND = 'js';
 const {createHandler} = require('../serverless/handler.cjs');
 const FullNode = require('hsd/lib/node/fullnode');
 const Address = require('hsd/lib/primitives/address');
+const Block = require('hsd/lib/primitives/block');
 const Coin = require('hsd/lib/primitives/coin');
+const Network = require('hsd/lib/protocol/network');
 const KeyRing = require('hsd/lib/primitives/keyring');
 const MTX = require('hsd/lib/primitives/mtx');
 const {types} = require('hsd/lib/covenants/rules');
@@ -27,6 +29,10 @@ const AUTH = `Basic ${Buffer.from(`x:${env.TRANSFUR_HSD_API_KEY}`).toString('bas
 const address = Address.fromHash(Buffer.alloc(20, 1), 0).toString(NETWORK);
 const altAddress = Address.fromHash(Buffer.alloc(20, 2), 0).toString(NETWORK);
 const coinPath = addr => `/api/coins?address=${encodeURIComponent(addr)}`;
+const historyPath = addr => `/api/history?address=${encodeURIComponent(addr)}`;
+const regtest = Network.get(NETWORK);
+const [genesisTX] = Block.decode(regtest.genesisBlock).txs;
+const genesisIndexPath = `/tx/address/${genesisTX.outputs[0].address.toString(NETWORK)}`;
 const status = (network = NETWORK, height = 2) => Response.json({network, chain: {height}, secret: 'not public'});
 const MAX_BODY = 2 * 32768 + 1024;
 
@@ -79,6 +85,16 @@ function row(override = {}) {
   };
 }
 
+function historyMeta(tx, height = -1, time = 1700000000) {
+  return {...tx.getJSON(NETWORK), height, mtime: time, time: height === -1 ? 0 : time,
+    block: height === -1 ? null : '12'.repeat(32)};
+}
+
+function genesisIndex() {
+  return Response.json([{...historyMeta(genesisTX, 0, regtest.genesis.time),
+    block: regtest.genesis.hash.toString('hex')}]);
+}
+
 function submission(coin = row(), fee = 10000, alter = () => {}) {
   const key = KeyRing.generate();
   const destination = KeyRing.generate().getAddress();
@@ -106,7 +122,7 @@ test('fails closed on missing or insecure trusted configuration', () => {
   }
 });
 
-test('exposes exactly three same-origin API routes and never forwards browser headers', async t => {
+test('exposes only the allowed same-origin API routes and never forwards browser headers', async t => {
   const {handle, calls} = mock(t, () => status());
   const valid = await handle(request('/api/status', {headers: {
     Authorization: 'untrusted', Cookie: 'untrusted', 'X-Forwarded-Host': 'untrusted.example', Host: 'anything'
@@ -128,7 +144,14 @@ test('exposes exactly three same-origin API routes and never forwards browser he
     [414, request(coinPath('a'.repeat(1100)))], [400, request(coinPath('https://evil.example'))],
     [400, request(`/api/coins?address=${address}&another=${address}`)],
     [400, request(`/api/coins?address=${address}&address=${address}`)], [400, request('/api/coins')],
-    [400, request(coinPath(Address.fromHash(Buffer.alloc(20, 1), 0).toString('main')))]
+    [400, request(coinPath(Address.fromHash(Buffer.alloc(20, 1), 0).toString('main')))],
+    [403, request(historyPath(address), {headers: {
+      'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document'
+    }})],
+    [405, request(historyPath(address), {method: 'HEAD'})], [400, request('/api/history')],
+    [400, request(`${historyPath(address)}&address=${altAddress}`)], [400, request(`${historyPath(address)}&limit=1`)],
+    [400, request(historyPath(Address.fromHash(Buffer.alloc(20, 1), 0).toString('main')))],
+    [414, request(historyPath('x'.repeat(1100)))]
   ]) {
     const result = await handle(req);
     assert.equal(result.status, expected, `${req.method} ${req.url}: ${await result.text()}`);

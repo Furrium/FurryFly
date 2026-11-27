@@ -1,13 +1,20 @@
 const {formatAmount} = require('./units.cjs');
 const {isSpendable, validateCoins} = require('./coins.cjs');
+const {mergeActivity} = require('./activity.cjs');
+const {drawReceiveQR} = require('./receive-qr.cjs');
+const {t, i18nError, translateError, getLanguage, setLanguage, applyTranslations} = require('./i18n.cjs');
 
 const $ = id => document.getElementById(id);
-const dbName = 'transfur-regtest-wallet';
+let dbName = 'transfur-regtest-wallet';
+let network = null;
 const unlockMs = 5 * 60 * 1000;
 let db;
 let vault;
 let pendingVault;
 let addresses;
+let receiveAddresses = [];
+let selectedReceive = 0;
+let activity = null;
 let worker;
 let generation = 0;
 let seq = 0;
@@ -17,11 +24,98 @@ let plan;
 let lockTimer;
 let lockAt;
 const requests = new Map();
+const localizedNodes = new Map([
+  ['setup-submit', {key: 'setup.createSubmit'}],
+  ['chain-state', {key: 'balance.unchecked'}],
+  ['receipt-title', {key: 'receipt.submitted'}],
+  ['receipt-detail', {key: 'receipt.submittedHint'}],
+]);
+let notice;
+let validationTarget;
 
-function message(text = '', error = false) {
-  $('message').textContent = text;
-  $('message').hidden = !text;
-  $('message').classList.toggle('error', error);
+function renderMessage() {
+  const text = notice ? (notice.error ? translateError(notice.error) : t(notice.key, notice.params)) : '';
+  const node = $('message');
+  node.textContent = text;
+  node.hidden = !text;
+  node.classList.toggle('error', Boolean(notice?.error || validationTarget));
+}
+
+function message(key, params) {
+  validationTarget = null;
+  notice = key ? {key, params} : null;
+  renderMessage();
+}
+
+function showError(error) {
+  validationTarget = null;
+  notice = {error: error || i18nError('error.operationFailed')};
+  renderMessage();
+}
+
+function setCopy(id, key, params) {
+  if (key) localizedNodes.set(id, {key, params});
+  else localizedNodes.delete(id);
+  $(id).textContent = key ? t(key, params) : '';
+}
+
+function renderLanguage() {
+  applyTranslations();
+  for (const button of $('language-picker').querySelectorAll('[data-language]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.language === getLanguage()));
+  }
+  for (const [id, {key, params}] of localizedNodes) $(id).textContent = t(key, params);
+  renderMessage();
+  renderNetwork();
+  if (addresses?.length) {
+    renderReceive();
+    renderActivity();
+  }
+}
+
+function renderNetwork() {
+  if (!network) return;
+  setCopy('network-label', network.name === 'main' ? 'network.main' : 'network.regtest');
+  setCopy('notice-title', network.name === 'main' ? 'app.mainnetFunds' : 'app.testFunds');
+  setCopy('notice-text', network.name === 'main' ? 'app.mainnetCaution' : 'app.mainnetWarning');
+}
+
+async function loadNetwork() {
+  const status = await api('/api/status');
+  if (!['regtest', 'main'].includes(status.network) || !Number.isInteger(status.coinbaseMaturity)) {
+    throw i18nError('error.nodeNetwork');
+  }
+  network = {name: status.network, maturity: status.coinbaseMaturity};
+  dbName = `transfur-${network.name === 'main' ? 'mainnet' : network.name}-wallet`;
+  renderNetwork();
+}
+
+function attachLanguagePicker() {
+  const picker = $('language-picker');
+  for (const button of picker.querySelectorAll('[data-language]')) {
+    button.addEventListener('click', () => {
+      if (setLanguage(button.dataset.language)) renderLanguage();
+    });
+  }
+  renderLanguage();
+  picker.hidden = false;
+}
+
+function showValidation(event) {
+  const input = event.target;
+  if (!input.form || !input.validity) return;
+  // Native bubbles use the browser's locale, not necessarily the wallet's selected language.
+  event.preventDefault();
+  const first = Array.from(input.form.elements).find(control => control.willValidate && !control.validity.valid);
+  if (first !== input) return;
+  const validity = input.validity;
+  notice = validity.valueMissing ? {key: 'validation.required'}
+    : validity.tooShort ? {key: 'validation.tooShort', params: {min: input.minLength}}
+    : validity.tooLong ? {key: 'validation.tooLong', params: {max: input.maxLength}}
+    : {key: 'validation.invalid'};
+  validationTarget = input;
+  renderMessage();
+  input.focus();
 }
 
 function screen(name) {
@@ -34,7 +128,7 @@ function openDb() {
     const request = indexedDB.open(dbName, 1);
     request.onupgradeneeded = () => request.result.createObjectStore('vault');
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(new Error('Could not open browser wallet storage.'));
+    request.onerror = () => reject(i18nError('error.openStorage'));
   });
 }
 
@@ -44,14 +138,14 @@ function storage(record) {
     const store = tx.objectStore('vault');
     const request = record ? store.add(record, 'default') : store.get('default');
     tx.oncomplete = () => resolve(request.result);
-    tx.onabort = () => reject(new Error('Wallet storage is unavailable or another wallet already exists.'));
+    tx.onabort = () => reject(i18nError('error.storageUnavailable'));
   });
 }
 
 function stopSigner() {
   worker?.terminate();
   worker = null;
-  for (const request of requests.values()) request.reject(new Error('The wallet was locked.'));
+  for (const request of requests.values()) request.reject(i18nError('error.walletLocked'));
   requests.clear();
 }
 
@@ -62,11 +156,11 @@ function signer(type, payload = {}) {
       const request = requests.get(data.id);
       if (!request) return;
       requests.delete(data.id);
-      if (data.error) request.reject(new Error(data.error));
+      if (data.error) request.reject(data.error);
       else request.resolve(data.value);
     };
     worker.onerror = () => {
-      for (const request of requests.values()) request.reject(new Error('The local signer failed to start.'));
+      for (const request of requests.values()) request.reject(i18nError('error.signerStart'));
       stopSigner();
     };
   }
@@ -79,7 +173,7 @@ function signer(type, payload = {}) {
 
 function workState(value) {
   busy = value;
-  for (const id of ['setup-submit', 'unlock-submit', 'refresh', 'prepare', 'broadcast', 'cancel', 'choose-create', 'choose-restore']) $(id).disabled = busy;
+  for (const id of ['setup-submit', 'unlock-submit', 'refresh', 'prepare', 'broadcast', 'cancel', 'choose-create', 'choose-restore', 'receive-select']) $(id).disabled = busy;
   $('backup-done').disabled = busy || !$('backup-saved').checked;
 }
 
@@ -93,7 +187,7 @@ function operate(callback) {
     workState(true);
     message();
     try { await callback(current); }
-    catch (error) { if (current()) message(error.message || 'The operation failed.', true); }
+    catch (error) { if (current()) showError(error); }
     finally { if (current()) workState(false); }
   };
 }
@@ -103,17 +197,25 @@ function clearReview() {
   if ($('review').open) $('review').close();
 }
 
-function lock(notice = 'Wallet locked.') {
+function lock(noticeKey = 'vault.locked') {
   generation++;
   stopSigner();
   clearTimeout(lockTimer);
   lockAt = null;
   pendingVault = null;
   addresses = null;
+  receiveAddresses = [];
+  selectedReceive = 0;
+  activity = null;
   clearReview();
   $('receipt').hidden = true;
   $('txid').textContent = '';
   $('receive-address').textContent = '';
+  $('receive-select').replaceChildren();
+  $('receive-qr').replaceChildren();
+  $('activity-list').replaceChildren();
+  $('activity-empty').hidden = true;
+  $('activity-note').hidden = true;
   $('backup-words').replaceChildren();
   $('backup-saved').checked = false;
   $('setup-form').reset();
@@ -121,15 +223,15 @@ function lock(notice = 'Wallet locked.') {
   $('send-form').reset();
   workState(false);
   screen(vault ? 'unlock' : 'setup');
-  message(notice);
+  message(noticeKey);
 }
 
 function resetLockTimer() {
   if (!addresses || ($('wallet').hidden && $('backup').hidden)) return;
-  if (lockAt && Date.now() >= lockAt) { lock('Wallet locked after inactivity.'); return; }
+  if (lockAt && Date.now() >= lockAt) { lock('vault.inactive'); return; }
   clearTimeout(lockTimer);
   lockAt = Date.now() + unlockMs;
-  lockTimer = setTimeout(() => lock('Wallet locked after inactivity.'), unlockMs);
+  lockTimer = setTimeout(() => lock('vault.inactive'), unlockMs);
 }
 
 async function api(path, payload) {
@@ -137,8 +239,8 @@ async function api(path, payload) {
   try {
     response = await fetch(path, {cache: 'no-store', credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(12_000),
       ...(payload ? {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)} : {})});
-  } catch { throw new Error('The regtest service is unreachable.'); }
-  if (!response.ok) throw new Error(payload ? 'The node did not accept the submission. Refresh before retrying.' : 'Could not read the regtest node.');
+  } catch { throw i18nError('error.serviceUnreachable'); }
+  if (!response.ok) throw i18nError(payload ? 'error.nodeRejected' : 'error.nodeRead');
   return response.json();
 }
 
@@ -147,8 +249,8 @@ async function readFunds(current) {
   const pages = await Promise.all(owned.map(address => api(`/api/coins?address=${encodeURIComponent(address)}`)));
   if (!current()) return null;
   const height = pages[0].height;
-  if (pages.some(page => page.network !== 'regtest' || page.height !== height || !Array.isArray(page.coins))) {
-    throw new Error('The node is on the wrong network or its tip changed. Refresh and try again.');
+  if (pages.some(page => page.network !== network.name || page.height !== height || !Array.isArray(page.coins))) {
+    throw i18nError('error.nodeNetwork');
   }
   const coins = pages.flatMap((page, i) => validateCoins(page.coins, [owned[i]], height));
   return {height, coins: validateCoins(coins, owned, height)};
@@ -167,22 +269,124 @@ async function refresh(current) {
     $('available').textContent = formatAmount(available);
     $('pending').textContent = formatAmount(pending);
     $('immature').textContent = formatAmount(immature);
-    $('chain-state').textContent = `Regtest · block ${snapshot.height}`;
+    setCopy('chain-state', network.name === 'main' ? 'balance.blockMain' : 'balance.block', {height: snapshot.height});
     return snapshot;
   } catch (error) {
     if (current()) {
       for (const id of ['available', 'pending', 'immature']) $(id).textContent = '—';
-      $('chain-state').textContent = 'Node not available';
+      setCopy('chain-state', 'balance.unavailable');
     }
     throw error;
   }
 }
 
+function receiveAddress() {
+  return receiveAddresses[selectedReceive] || '';
+}
+
+function renderReceive() {
+  if (!addresses.length) return;
+  const address = receiveAddress();
+  $('receive-address').textContent = address;
+  const select = $('receive-select');
+  if (select.options.length !== receiveAddresses.length) {
+    select.replaceChildren(...receiveAddresses.map((_, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = t('receive.addressOption', {index: index + 1, total: receiveAddresses.length});
+      return option;
+    }));
+  } else {
+    for (const option of select.options) {
+      option.textContent = t('receive.addressOption', {index: Number(option.value) + 1, total: receiveAddresses.length});
+    }
+  }
+  select.value = String(selectedReceive);
+  drawReceiveQR($('receive-qr'), address);
+}
+
+function activityKind(row) {
+  if (row.kind === 'reward' || row.kind === 'received' || row.kind === 'sent'
+      || row.kind === 'self' || row.kind === 'unknown') return `activity.${row.kind}`;
+  return 'activity.unknown';
+}
+
+function renderActivity() {
+  const list = $('activity-list');
+  const empty = $('activity-empty');
+  const note = $('activity-note');
+  list.replaceChildren();
+  if (!activity) {
+    empty.hidden = true;
+    note.hidden = true;
+    return;
+  }
+  empty.hidden = activity.rows.length !== 0;
+  note.hidden = !activity.truncated;
+  if (activity.truncated) setCopy('activity-note', 'activity.truncated');
+  const formatter = new Intl.DateTimeFormat(getLanguage(), {dateStyle: 'medium'});
+  for (const row of activity.rows) {
+    const item = document.createElement('li');
+    item.className = 'activity-row';
+    const kind = document.createElement('span');
+    kind.className = 'activity-kind';
+    kind.textContent = t(activityKind(row));
+    const amount = document.createElement('span');
+    amount.className = 'activity-amount';
+    if (row.value === null) {
+      amount.textContent = '—';
+    } else {
+      const magnitude = formatAmount(Math.abs(row.value));
+      amount.classList.add(row.value >= 0 ? 'positive' : 'negative');
+      amount.textContent = `${row.value > 0 ? '+' : row.value < 0 ? '−' : ''}${magnitude} ${t('units.hns')}`;
+    }
+    const state = document.createElement('span');
+    state.className = `activity-state ${row.state}`;
+    state.textContent = row.state === 'pending' ? t('activity.pending')
+      : row.state === 'immature' ? t('activity.immature')
+      : t(row.confirmations === 1 ? 'activity.confirmedOne' : 'activity.confirmed', {count: row.confirmations});
+    const meta = document.createElement('span');
+    meta.className = 'activity-meta';
+    const when = row.time ? formatter.format(new Date(row.time * 1000)) : '';
+    meta.textContent = [when, row.height < 0 ? t('activity.pendingBlock') : t('activity.block', {height: row.height})]
+      .filter(Boolean).join(' · ');
+    const txid = document.createElement('code');
+    txid.className = 'activity-txid';
+    txid.textContent = row.txid;
+    txid.title = t('activity.txid');
+    item.append(kind, state, amount, meta, txid);
+    list.append(item);
+  }
+}
+
+async function loadActivity(current) {
+  const owned = addresses;
+  const pages = await Promise.all(owned.map(address => api(`/api/history?address=${encodeURIComponent(address)}`)));
+  if (!current()) return null;
+  const height = pages[0]?.height;
+  if (!Number.isSafeInteger(height) || pages.some(page => page.network !== network.name || page.height !== height
+      || !Array.isArray(page.transactions))) {
+    throw i18nError('error.nodeNetwork');
+  }
+  activity = mergeActivity(pages, owned, height, network.maturity);
+  renderActivity();
+  return activity;
+}
+
+async function refreshActivity(current) {
+  try {
+    await loadActivity(current);
+  } catch (error) {
+    if (current()) showError(error);
+  }
+}
+
 async function enterWallet(current) {
-  $('receive-address').textContent = addresses[0];
   screen('wallet');
+  renderReceive();
   resetLockTimer();
   await refresh(current);
+  await refreshActivity(current);
 }
 
 function setMode(value) {
@@ -192,22 +396,31 @@ function setMode(value) {
   $('choose-restore').setAttribute('aria-pressed', String(restore));
   $('restore-field').hidden = !restore;
   $('restore-phrase').required = restore;
-  if (!restore) $('restore-phrase').value = '';
-  $('setup-submit').textContent = restore ? 'Restore encrypted wallet' : 'Create encrypted wallet';
+  if (!restore) {
+    if (validationTarget === $('restore-phrase')) message();
+    $('restore-phrase').value = '';
+  }
+  setCopy('setup-submit', restore ? 'setup.restoreSubmit' : 'setup.createSubmit');
 }
 
 function attach() {
+  document.addEventListener('invalid', showValidation, true);
+  document.addEventListener('input', event => {
+    if (event.target === validationTarget) message();
+  });
   $('choose-create').onclick = () => setMode('create');
   $('choose-restore').onclick = () => setMode('restore');
   $('setup-form').onsubmit = operate(async current => {
     const password = $('new-password').value;
-    if (password !== $('repeat-password').value) throw new Error('The passwords do not match.');
+    if (password !== $('repeat-password').value) throw i18nError('error.passwordMismatch');
     const phrase = $('restore-phrase').value;
     $('setup-form').reset();
     try {
-      const created = await signer(mode, {password, phrase});
+      const created = await signer(mode, {password, phrase, network: network.name});
       if (!current()) return;
       addresses = created.addresses;
+      receiveAddresses = created.receiveAddresses;
+      selectedReceive = 0;
       if (created.backup) {
         pendingVault = created.vault;
         $('backup-words').replaceChildren(...created.backup.split(' ').map(word => {
@@ -241,16 +454,28 @@ function attach() {
   $('unlock-form').onsubmit = operate(async current => {
     const password = $('password').value;
     $('unlock-form').reset();
-    const opened = await signer('unlock', {vault, password});
+    const opened = await signer('unlock', {vault, password, network: network.name});
     if (!current()) return;
     addresses = opened.addresses;
+    receiveAddresses = opened.receiveAddresses;
+    selectedReceive = 0;
     await enterWallet(current);
   });
   $('lock').onclick = () => lock();
-  $('refresh').onclick = operate(refresh);
+  $('receive-select').onchange = event => {
+    const index = Number(event.target.value);
+    if (Number.isInteger(index) && index >= 0 && index < receiveAddresses.length) {
+      selectedReceive = index;
+      renderReceive();
+    }
+  };
+  $('refresh').onclick = operate(async current => {
+    await refresh(current);
+    await refreshActivity(current);
+  });
   $('copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(addresses[0]); message('Receive address copied.'); }
-    catch { message('Copy is unavailable. You can select the address above.', true); }
+    try { await navigator.clipboard.writeText(receiveAddress()); message('receive.copied'); }
+    catch { showError(i18nError('error.copyUnavailable')); }
   };
   $('send-form').onsubmit = operate(async current => {
     const recipient = $('recipient').value;
@@ -261,9 +486,9 @@ function attach() {
     if (!current()) return;
     plan = review;
     $('review-address').textContent = review.recipient;
-    $('review-amount').textContent = `${formatAmount(review.value)} HNS`;
-    $('review-fee').textContent = `${formatAmount(review.fee)} HNS`;
-    $('review-total').textContent = `${formatAmount(review.value + review.fee)} HNS`;
+    setCopy('review-amount', 'units.hnsAmount', {amount: formatAmount(review.value)});
+    setCopy('review-fee', 'units.hnsAmount', {amount: formatAmount(review.fee)});
+    setCopy('review-total', 'units.hnsAmount', {amount: formatAmount(review.value + review.fee)});
     $('receipt').hidden = true;
     // The native dialog makes the background inert and gives Cancel initial focus.
     workState(false);
@@ -283,42 +508,46 @@ function attach() {
     const signed = await signer('approve', {id});
     if (!current()) return;
     $('txid').textContent = signed.txid;
-    $('receipt-title').textContent = 'Sending to the node…';
-    $('receipt-detail').textContent = 'Keep this transaction ID until the node responds.';
+    setCopy('receipt-title', 'receipt.sending');
+    setCopy('receipt-detail', 'receipt.sendingHint');
     $('receipt').hidden = false;
     try {
       const receipt = await api('/api/transactions', {hex: signed.hex});
       if (!current()) return;
-      if (receipt.txid !== signed.txid) throw new Error('Unexpected transaction ID.');
+      if (receipt.txid !== signed.txid) throw i18nError('error.txidMismatch');
     } catch {
       if (!current()) return;
-      $('receipt-title').textContent = 'Submission not verified';
-      $('receipt-detail').textContent = 'Check this transaction ID with the node operator before making another payment.';
-      throw new Error('No confirmation from the node. Do not retry blindly.');
+      setCopy('receipt-title', 'receipt.unverified');
+      setCopy('receipt-detail', 'receipt.unverifiedHint');
+      throw i18nError('error.broadcastUnverified');
     }
-    $('receipt-title').textContent = 'Submitted to the node';
-    $('receipt-detail').textContent = 'Confirmations are not guaranteed until mined.';
+    setCopy('receipt-title', 'receipt.submitted');
+    setCopy('receipt-detail', 'receipt.submittedHint');
     $('send-form').reset();
     await refresh(current);
+    await refreshActivity(current);
   });
   document.addEventListener('pointerdown', resetLockTimer, {passive: true});
   document.addEventListener('keydown', resetLockTimer);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && lockAt && Date.now() >= lockAt) lock('Wallet locked after inactivity.');
+    if (!document.hidden && lockAt && Date.now() >= lockAt) lock('vault.inactive');
   });
   // Also drop secrets if the page enters the browser back/forward cache.
-  window.addEventListener('pagehide', () => lock('Wallet locked.'));
+  window.addEventListener('pagehide', () => lock());
 }
 
 async function main() {
-  if (!isSecureContext || !crypto.subtle || !globalThis.indexedDB || !globalThis.Worker
-      || typeof $('review').showModal !== 'function' || typeof AbortSignal.timeout !== 'function') {
-    throw new Error('Use a modern browser on HTTPS or localhost.');
+  screen('setup');
+  attachLanguagePicker();
+  if (!globalThis.isSecureContext || !globalThis.crypto?.subtle || !globalThis.indexedDB || !globalThis.Worker
+      || typeof $('review').showModal !== 'function' || typeof globalThis.AbortSignal?.timeout !== 'function') {
+    throw i18nError('error.unsupportedBrowser');
   }
+  await loadNetwork();
   db = await openDb();
   vault = await storage();
   attach();
   screen(vault ? 'unlock' : 'setup');
 }
 
-main().catch(error => message(error.message, true));
+main().catch(showError);

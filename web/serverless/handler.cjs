@@ -1,9 +1,12 @@
 'use strict';
 
 const Address = require('hsd/lib/primitives/address');
+const Block = require('hsd/lib/primitives/block');
+const Network = require('hsd/lib/protocol/network');
 const TX = require('hsd/lib/primitives/tx');
 const {types} = require('hsd/lib/covenants/rules');
 const {MAX_MONEY} = require('hsd/lib/protocol/consensus');
+const {HISTORY_CANDIDATES, HISTORY_TX_BYTES, MAX_HISTORY_TIME, collectHistory} = require('../history.cjs');
 
 const NETWORK = 'regtest';
 const DEFAULT_TIMEOUT = 5000;
@@ -16,13 +19,22 @@ const MAX_COIN_ROWS = 1024;
 const MAX_COINS_RESPONSE = 512 * 1024;
 const MAX_TX_RESPONSE = 512 * 1024;
 const MAX_NODE_RESPONSE = 32 * 1024;
+const MAX_HISTORY_RESPONSE = 4 * 1024 * 1024;
+const MAX_HISTORY_WIRE_ROWS = 1024;
+const HISTORY_PARENT_LOOKUPS = 128;
 const MAX_HEIGHT = 0x7ffffffe;
 const INPUT_BATCH_SIZE = 8;
 const ROUTES = new Map([
   ['/api/status', 'GET'],
   ['/api/coins', 'GET'],
+  ['/api/history', 'GET'],
   ['/api/transactions', 'POST']
 ]);
+
+const regtest = Network.get(NETWORK);
+const [genesisTX] = Block.decode(regtest.genesisBlock).txs;
+const genesisTXID = genesisTX.txid();
+const genesisAddress = genesisTX.outputs[0].address.toString(NETWORK);
 
 class HTTPError extends Error {
   constructor(status, message, headers) {
@@ -217,6 +229,33 @@ function decodeCoin(data) {
   return {plain, coin: {hash, index, height, value, coinbase, address: address.toString(NETWORK)}};
 }
 
+function decodeHistoryMeta(data, txid) {
+  if (!object(data) || !hashString(data.hash) || (txid !== undefined && data.hash !== txid)
+      || !hashString(data.witnessHash) || !integer(data.height, -1, MAX_HEIGHT)
+      || !integer(data.mtime, 0, MAX_HISTORY_TIME) || !integer(data.time, 0, MAX_HISTORY_TIME)
+      || (data.height === -1 ? data.block !== null || data.time !== 0
+        : !hashString(data.block) || data.time === 0)
+      || typeof data.hex !== 'string' || !data.hex.length || data.hex.length % 2) {
+    throw badUpstream();
+  }
+
+  const {height, block} = data;
+  const time = height === -1 ? data.mtime : data.time;
+  if (data.hex.length > 2 * HISTORY_TX_BYTES)
+    return {tx: null, height, time, block};
+  if (/[^0-9a-f]/.test(data.hex))
+    throw badUpstream();
+  try {
+    const raw = Buffer.from(data.hex, 'hex');
+    const tx = TX.decode(raw);
+    if (tx.getSize() !== raw.length || tx.txid() !== data.hash || tx.wtxid() !== data.witnessHash)
+      throw badUpstream();
+    return {tx, height, time, block};
+  } catch {
+    throw badUpstream();
+  }
+}
+
 function decodeTransaction(data) {
   if (!object(data) || Object.keys(data).length !== 1 || typeof data.hex !== 'string')
     throw new HTTPError(400, 'Expected only a hex transaction.');
@@ -336,6 +375,94 @@ function createHandler({env = process.env, fetch: fetchUpstream = globalThis.fet
     return {network: NETWORK, height, coins};
   }
 
+  async function getHistory(address, height, signal) {
+    async function indexedRows(text) {
+      // Stock hsd 6.1.1 has no address-history paging/limit parameter. Bound our
+      // transfer, deadline and validation; never forward client-selected options.
+      const rows = await upstream(`/tx/address/${text}`, signal, {limit: MAX_HISTORY_RESPONSE});
+      if (!Array.isArray(rows) || rows.length > MAX_HISTORY_WIRE_ROWS)
+        throw badUpstream();
+      return rows;
+    }
+
+    // hsd status does not expose these flags, and the address endpoint silently
+    // returns no confirmed history unless BOTH indexes are enabled. Its known
+    // genesis row gives positive index verification even for an unused address.
+    const probe = await indexedRows(genesisAddress);
+    const anchored = decodeHistoryMeta(probe.find(row => row?.hash === genesisTXID), genesisTXID);
+    if (!anchored.tx || anchored.height !== 0 || anchored.time !== regtest.genesis.time
+        || anchored.block !== regtest.genesis.hash.toString('hex') || anchored.tx.wtxid() !== genesisTX.wtxid()) {
+      throw badUpstream();
+    }
+
+    const rows = address === genesisAddress ? probe : await indexedRows(address);
+    const pending = [];
+    const confirmed = [];
+    for (const row of rows) {
+      if (!object(row) || !integer(row.height, -1, MAX_HEIGHT))
+        throw badUpstream();
+      (row.height === -1 ? pending : confirmed).push(row);
+    }
+    const selected = pending.concat(confirmed).slice(0, HISTORY_CANDIDATES);
+    const parents = new Map([[genesisTXID, anchored]]);
+    const seen = new Set();
+    let maxHeight = -1;
+    const candidates = selected.map(row => {
+      const meta = decodeHistoryMeta(row);
+      if (seen.has(row.hash))
+        throw badUpstream();
+      seen.add(row.hash);
+      maxHeight = Math.max(maxHeight, meta.height);
+      parents.set(row.hash, meta);
+      return meta;
+    });
+    if (maxHeight > height) {
+      height = await getHeight(signal);
+      if (maxHeight > height)
+        throw badUpstream();
+    }
+
+    // Use exact previous-output bytes, not an input's advertised address/coin.
+    // Each tx hash is fetched at most once per request, with its own response cap.
+    let lookups = 0;
+    async function previousOutput({hash, index}, child) {
+      const txid = hash.toString('hex');
+      if (!parents.has(txid)) {
+        if (lookups >= HISTORY_PARENT_LOOKUPS)
+          return null;
+        lookups++;
+        parents.set(txid, upstream(`/tx/${txid}`, signal, {limit: MAX_TX_RESPONSE, missing: true})
+          .then(row => row === null ? null : decodeHistoryMeta(row, txid)));
+      }
+      const parent = await parents.get(txid);
+      if (!parent?.tx)
+        return null;
+      if (index >= parent.tx.outputs.length
+          || (child.height !== -1 && (parent.height === -1 || parent.height > child.height))) {
+        throw badUpstream();
+      }
+      return parent.tx.outputs[index];
+    }
+
+    try {
+      return await collectHistory(height, decodeAddress(address, NETWORK), candidates, rows.length > selected.length,
+        async child => {
+          const outputs = [];
+          for (let i = 0; i < child.tx.inputs.length; i += INPUT_BATCH_SIZE) {
+            signal.throwIfAborted();
+            const batch = await Promise.all(child.tx.inputs.slice(i, i + INPUT_BATCH_SIZE)
+              .map(({prevout}) => previousOutput(prevout, child)));
+            outputs.push(...batch);
+          }
+          return outputs;
+        }, NETWORK);
+    } catch (err) {
+      if (err instanceof HTTPError)
+        throw err;
+      throw badUpstream();
+    }
+  }
+
   async function submit(tx, signal) {
     // Validate the exact unspent inputs (not gettxout, which may miss mempool spends).
     for (let start = 0; start < tx.inputs.length; start += INPUT_BATCH_SIZE) {
@@ -392,14 +519,15 @@ function createHandler({env = process.env, fetch: fetchUpstream = globalThis.fet
       }
       if (request.method !== expected)
         throw new HTTPError(405, 'Method not allowed.', {Allow: expected});
-      if (url.href.includes('#') || (url.pathname !== '/api/coins' && url.href.includes('?')))
+      const hasAddress = url.pathname === '/api/coins' || url.pathname === '/api/history';
+      if (url.href.includes('#') || (!hasAddress && url.href.includes('?')))
         throw new HTTPError(400, 'Unexpected query or fragment.');
       if (expected !== 'POST' && (request.body || request.headers.has('transfer-encoding')
           || (request.headers.has('content-length') && request.headers.get('content-length') !== '0'))) {
         throw new HTTPError(400, 'A request body is not allowed here.');
       }
 
-      const address = url.pathname === '/api/coins' ? queryAddress(url) : null;
+      const address = hasAddress ? queryAddress(url) : null;
       let tx;
       if (expected === 'POST') {
         const encoding = request.headers.get('content-encoding');
@@ -415,7 +543,7 @@ function createHandler({env = process.env, fetch: fetchUpstream = globalThis.fet
         async signal => {
           const height = await getHeight(signal);
           if (address !== null)
-            return getCoins(address, height, signal);
+            return url.pathname === '/api/history' ? getHistory(address, height, signal) : getCoins(address, height, signal);
           if (tx)
             return submit(tx, signal);
           return {network: NETWORK, height};

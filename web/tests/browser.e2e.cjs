@@ -10,7 +10,7 @@ async function text(locator, expected) {
 }
 
 async function main() {
-  const service = await startRegtest({port: 0});
+  const service = await startRegtest({port: 0, distDir: process.env.TRANSFUR_WEB_DIST});
   let browser;
   try {
     browser = await chromium.launch({headless: true, channel: process.env.TRANSFUR_BROWSER_CHANNEL || undefined});
@@ -26,6 +26,7 @@ async function main() {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(service.origin);
+    await page.locator('[data-language="en"]').click();
     const password = 'regtest browser only 21';
     const id = name => page.locator(`#${name}`);
     await id('new-password').fill(password);
@@ -41,11 +42,20 @@ async function main() {
     assert.equal(await id('backup-words').locator('li').count(), 0);
     const receive = await id('receive-address').textContent();
     assert.match(receive, /^rs1[0-9a-z]+$/);
+    assert.equal(await id('receive-select').locator('option').count(), 5);
+    assert.equal(await id('receive-qr').locator('path').count(), 1);
+    assert.match(await id('receive-qr').getAttribute('viewBox'), /^0 0 \d+ \d+$/);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.locator('[data-language="zh-CN"]').click();
+    assert.match(await page.locator('[data-i18n="balance.title"]').textContent(), /可用余额/);
+    assert.match(await id('receive-select').locator('option').first().textContent(), /地址 1\/5/);
+    await page.locator('[data-language="en"]').click();
 
     await service.fund(receive);
     await id('refresh').click();
     await text(id('available'), '2000');
+    await page.waitForFunction(() => document.querySelectorAll('#activity-list .activity-row').length === 1);
+    assert.equal(await id('activity-list').locator('.activity-kind').first().textContent(), 'Mining reward');
     const recipient = KeyRing.generate().getAddress().toString('regtest');
     await id('recipient').fill(KeyRing.generate().getAddress().toString('main'));
     await id('amount').fill('2.5');
@@ -74,6 +84,13 @@ async function main() {
     assert.ok((await utxos()).some(coin => coin.hash === txid && coin.value === 2_500_000 && coin.height === -1));
     const {height} = await service.mine();
     assert.ok((await utxos()).some(coin => coin.hash === txid && coin.value === 2_500_000 && coin.height === height));
+    await id('refresh').click();
+    await page.waitForFunction(() => {
+      const rows = [...document.querySelectorAll('#activity-list .activity-row')];
+      return rows.length === 2 && rows[0].querySelector('.activity-kind')?.textContent === 'Sent'
+        && /confirmation/.test(rows[0].querySelector('.activity-state')?.textContent || '');
+    });
+    assert.ok((await id('activity-list').locator('.activity-kind').allTextContents()).includes('Sent'));
 
     await id('lock').click();
     await visible(id('unlock'));

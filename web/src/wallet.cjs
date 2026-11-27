@@ -9,10 +9,14 @@ const TX = require('hsd/lib/primitives/tx');
 const Network = require('hsd/lib/protocol/network');
 const policy = require('hsd/lib/protocol/policy');
 const {parseAmount} = require('./units.cjs');
-const {COINBASE_MATURITY, isSpendable, validateCoins} = require('./coins.cjs');
+const {isSpendable, validateCoins} = require('./coins.cjs');
 
-const network = Network.get('regtest');
-if (network.coinbaseMaturity !== COINBASE_MATURITY) throw new Error('Unexpected regtest coinbase maturity.');
+const NETWORKS = new Map([['regtest', Network.get('regtest')], ['main', Network.get('main')]]);
+function networkFor(name) {
+  const network = NETWORKS.get(name);
+  if (!network) throw new Error('Unsupported wallet network.');
+  return network;
+}
 const feeRate = 2_000;
 const maxFee = 10_000;
 const RECEIVE_COUNT = 5;
@@ -35,7 +39,8 @@ function parsePhrase(phrase) {
   return mnemonic;
 }
 
-function openWallet(phrase) {
+function openWallet(phrase, networkName = 'regtest') {
+  const network = networkFor(networkName);
   const mnemonic = parsePhrase(phrase);
   const seed = mnemonic.toSeed();
   let root;
@@ -48,14 +53,16 @@ function openWallet(phrase) {
   const changeRing = KeyRing.fromPrivate(account.derive(1).derive(0).privateKey);
   const receiveAddresses = receiveRings.map(ring => ring.getAddress().toString(network));
   const addresses = [...receiveAddresses, changeRing.getAddress().toString(network)];
-  return {rings: [...receiveRings, changeRing], addresses, receiveAddresses, changeRing, phrase: mnemonic.getPhrase()};
+  return {rings: [...receiveRings, changeRing], addresses, receiveAddresses, changeRing,
+    networkName, maturity: network.coinbaseMaturity, phrase: mnemonic.getPhrase()};
 }
 
-function recipientAddress(recipient) {
-  if (typeof recipient !== 'string' || recipient.length > 120) throw new Error('Enter a valid regtest address.');
+function recipientAddress(recipient, network) {
+  const label = network.type === 'main' ? 'mainnet' : 'regtest';
+  if (typeof recipient !== 'string' || recipient.length > 120) throw new Error(`Enter a valid ${label} address.`);
   let address;
   try { address = Address.fromString(recipient.trim(), network); } catch {
-    throw new Error('Enter a valid regtest address (rs1…).');
+    throw new Error(`Enter a valid ${label} address (${network.type === 'main' ? 'hs1' : 'rs1'}…).`);
   }
   if (address.isNull() || !(address.isPubkeyhash() || address.isScripthash())) {
     throw new Error('Unsupported recipient address.');
@@ -64,20 +71,21 @@ function recipientAddress(recipient) {
 }
 
 async function prepareTransfer({wallet, recipient, amount, height, coins}) {
-  const destination = recipientAddress(recipient);
+  const network = networkFor(wallet.networkName);
+  const destination = recipientAddress(recipient, network);
   const value = parseAmount(amount);
   const payment = new Output({address: destination, value});
   if (payment.isDust(policy.MIN_RELAY)) throw new Error('This amount is too small for a standard transaction.');
   const changeAddress = wallet.changeRing.getAddress();
-  const available = validateCoins(coins, wallet.addresses, height).filter(coin => isSpendable(coin, height));
+  const available = validateCoins(coins, wallet.addresses, height).filter(coin => isSpendable(coin, height, wallet.maturity));
   if (available.length === 0) throw new Error('No confirmed, mature funds to spend.');
   const inputs = available.map(coin => new Coin({...coin, hash: Buffer.from(coin.hash, 'hex'),
-    address: recipientAddress(coin.address)}));
+    address: recipientAddress(coin.address, network)}));
   const mtx = new MTX();
   mtx.addOutput(payment);
   try {
     await mtx.fund(inputs, {changeAddress, rate: feeRate, maxFee, height, confirmations: 1,
-      coinbaseMaturity: network.coinbaseMaturity});
+      coinbaseMaturity: wallet.maturity});
   } catch {
     throw new Error('Not enough confirmed, mature HNS for the amount and fee.');
   }

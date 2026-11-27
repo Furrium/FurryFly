@@ -3,7 +3,7 @@ const quiet = 4;
 
 // The QR payload is the plain receive address, not a payment request or web URL.
 function makeReceiveQR(address) {
-  if (typeof address !== 'string' || !/^rs1[023456789acdefghjklmnpqrstuvwxyz]{39}$/.test(address)) {
+  if (typeof address !== 'string' || !/^(?:rs1|hs1)[023456789acdefghjklmnpqrstuvwxyz]{39}$/.test(address)) {
     throw new TypeError('Expected a wallet-derived regtest receive address.');
   }
   const qr = qrcode(0, 'M');

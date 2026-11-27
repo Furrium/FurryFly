@@ -445,7 +445,7 @@ function createHandler({env = process.env, fetch: fetchUpstream = globalThis.fet
     }
 
     try {
-      return await collectHistory(height, decodeAddress(address), candidates, rows.length > selected.length,
+      return await collectHistory(height, decodeAddress(address, NETWORK), candidates, rows.length > selected.length,
         async child => {
           const outputs = [];
           for (let i = 0; i < child.tx.inputs.length; i += INPUT_BATCH_SIZE) {
@@ -455,7 +455,7 @@ function createHandler({env = process.env, fetch: fetchUpstream = globalThis.fet
             outputs.push(...batch);
           }
           return outputs;
-        });
+        }, NETWORK);
     } catch (err) {
       if (err instanceof HTTPError)
         throw err;

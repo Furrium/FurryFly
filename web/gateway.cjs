@@ -8,10 +8,14 @@ const {constants, promises: fs} = require('node:fs');
 process.env.NODE_BACKEND = 'js';
 const Address = require('hsd/lib/primitives/address');
 const TX = require('hsd/lib/primitives/tx');
+const Network = require('hsd/lib/protocol/network');
 const {T: addressTX} = require('hsd/lib/blockchain/layout');
 const {HISTORY_CANDIDATES, collectHistory} = require('./history.cjs');
 
-const NETWORK = 'regtest';
+const NETWORK = process.env.TRANSFUR_WEB_NETWORK || 'regtest';
+if (!['regtest', 'main'].includes(NETWORK))
+  throw new Error('TRANSFUR_WEB_NETWORK must be regtest or main.');
+const network = Network.get(NETWORK);
 const HOST = '127.0.0.1';
 const DEFAULT_PORT = 8080;
 const DIST = path.join(__dirname, 'dist');
@@ -78,8 +82,8 @@ function parseAddress(text) {
   try {
     if (typeof text !== 'string' || text.length > 90)
       throw new Error();
-    const address = Address.fromString(text, NETWORK);
-    if (!plainAddress(address) || text.toLowerCase() !== address.toString(NETWORK))
+    const address = Address.fromString(text, network);
+    if (!plainAddress(address) || text.toLowerCase() !== address.toString(network))
       throw new Error();
     return address;
   } catch {
@@ -190,7 +194,7 @@ async function getCoins(node, query) {
         height: coin.height,
         value: coin.value,
         coinbase: coin.coinbase,
-        address: coin.address.toString(NETWORK)
+        address: coin.address.toString(network)
       }));
     return {network: NETWORK, height: node.chain.height, coins};
   } finally {
@@ -202,7 +206,7 @@ async function getHistory(node, query) {
   const address = queryAddress(query);
   const chain = node.chain.db;
   if (!chain.options.indexAddress || !chain.options.indexTX || !node.mempool.options.indexAddress)
-    throw new RequestError(503, 'Regtest history requires transaction and address indexes.');
+    throw new RequestError(503, 'History requires transaction and address indexes.');
 
   // One snapshot, with a hard candidate cap before fetching transactions or input views.
   const unlock = await node.chain.locker.lock();
@@ -244,7 +248,7 @@ async function getHistory(node, query) {
       // Use the no-lock variants while holding the shared chain/mempool lock.
       const view = height === -1 ? await node.mempool._getSpentView(tx) : await chain.getSpentView(tx);
       return tx.inputs.map(input => view.getOutputFor(input));
-    });
+    }, NETWORK);
   } finally {
     unlock();
   }
@@ -322,7 +326,7 @@ async function handle(req, res, {node, distDir, authority}) {
     return;
   }
   if (pathname === '/api/status') {
-    sendJSON(res, 200, {network: NETWORK, height: node.chain.height});
+    sendJSON(res, 200, {network: NETWORK, height: node.chain.height, coinbaseMaturity: network.coinbaseMaturity});
     return;
   }
   if (pathname === '/api/coins') {

@@ -47,6 +47,23 @@ test('BIP39 checksums and regtest receive/change derivation are enforced', () =>
   assert.ok(addresses.every(address => /^rs1/.test(address)));
 });
 
+test('mainnet derivation, recipient validation and vaults stay separate from regtest', async () => {
+  const {addresses, receiveAddresses, maturity} = openWallet(phrase, 'main');
+  assert.ok(addresses.every(address => /^hs1/.test(address)));
+  assert.notDeepEqual(addresses, openWallet(phrase, 'regtest').addresses);
+  assert.equal(maturity, 100);
+  const recipient = KeyRing.generate().getAddress().toString('main');
+  const coin = {hash: '02'.repeat(32), index: 0, height: 100, value: 3_000_000,
+    coinbase: true, address: receiveAddresses[0]};
+  const prepared = await prepareTransfer({wallet: openWallet(phrase, 'main'), recipient,
+    amount: '1', height: 200, coins: [coin]});
+  assert.match(prepared.review.recipient, /^hs1/);
+  const vault = await encryptMnemonic(phrase, 'mainnet password 2026', 'main');
+  assert.equal(vault.network, 'main');
+  assert.equal(await decryptMnemonic(vault, 'mainnet password 2026', 'main'), phrase);
+  await assert.rejects(decryptMnemonic(vault, 'mainnet password 2026', 'regtest'), /unsupported/);
+});
+
 test('transaction review applies network, ownership, maturity, dust and fee constraints', async () => {
   const wallet = openWallet(phrase);
   const ring = KeyRing.generate();

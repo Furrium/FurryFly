@@ -62,6 +62,14 @@ test('the wallet translates status and error copy in English and Chinese', () =>
   assert.equal(i18n.resolveLanguage(['en-GB']), 'en');
 });
 
+test('the receive QR and history accept mainnet addresses too', () => {
+  const hs = 'hs1qz3fnjn70fs7rdxt57fhrl4yzsqngg55sqyz83a';
+  assert.ok(makeReceiveQR(hs).size > 0);
+  const row = {txid: txid('f'), height: 1, time: 1_700_000_000, coinbase: false,
+    inputs: [], outputs: [{address: hs, value: 1}]};
+  assert.equal(mergeActivity([page(1, [row])], [hs], 1).rows[0].kind, 'received');
+});
+
 test('the receive QR contains the address as a bounded SVG matrix', () => {
   const qr = makeReceiveQR(address);
   assert.ok(qr.size >= 21 && qr.size <= 200);

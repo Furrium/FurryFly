@@ -141,7 +141,7 @@ test('disposable regtest funds a mature coin and validates full signed NONE paym
   const recipient = recipientKey.getAddress();
   const destination = recipient.toString(NETWORK);
 
-  assert.deepEqual(JSON.parse((await request(origin, '/api/status')).body), {network: NETWORK, height: 0});
+  assert.deepEqual(JSON.parse((await request(origin, '/api/status')).body), {network: NETWORK, height: 0, coinbaseMaturity: 2});
   assert.deepEqual(JSON.parse((await getCoins(origin, funding)).body), {network: NETWORK, height: 0, coins: []});
   assert.equal((await getCoins(origin, fundingKey.getAddress().toString('main'))).status, 400);
   assert.equal((await request(origin, `/api/coins?address=${funding}&address=${funding}`)).status, 400);

@@ -19,11 +19,11 @@ function compareHistory(a, b) {
     || b.time - a.time || (a.txid < b.txid ? -1 : a.txid > b.txid ? 1 : 0);
 }
 
-function summarize(output) {
-  return {address: output.address.toString('regtest'), value: output.value};
+function summarize(output, network) {
+  return {address: output.address.toString(network), value: output.value};
 }
 
-async function collectHistory(height, address, candidates, truncated, readInputs) {
+async function collectHistory(height, address, candidates, truncated, readInputs, network) {
   const transactions = [];
   for (const candidate of candidates) {
     const {tx} = candidate;
@@ -57,7 +57,7 @@ async function collectHistory(height, address, candidates, truncated, readInputs
     }
     const txid = tx.txid();
     const {height, time} = candidate;
-    const row = {txid, height, time, coinbase, inputs: known.map(summarize), outputs: tx.outputs.map(summarize)};
+    const row = {txid, height, time, coinbase, inputs: known.map(output => summarize(output, network)), outputs: tx.outputs.map(output => summarize(output, network))};
     if (incomplete)
       row.inputsComplete = false;
     transactions.push(row);
@@ -67,7 +67,7 @@ async function collectHistory(height, address, candidates, truncated, readInputs
     truncated = true;
     transactions.length = HISTORY_ROWS;
   }
-  return {network: 'regtest', height, transactions, ...(truncated ? {truncated: true} : {})};
+  return {network, height, transactions, ...(truncated ? {truncated: true} : {})};
 }
 
 module.exports = {

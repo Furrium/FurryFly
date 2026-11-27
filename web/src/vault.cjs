@@ -20,21 +20,21 @@ async function keyFor(password, salt) {
   }
 }
 
-async function encryptMnemonic(mnemonic, password) {
+async function encryptMnemonic(mnemonic, password, network = 'regtest') {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const bytes = encoder.encode(mnemonic);
   try {
     const key = await keyFor(password, salt);
     const encrypted = await crypto.subtle.encrypt({name: 'AES-GCM', iv, additionalData: aad}, key, bytes);
-    return {version, network: 'regtest', salt: toHex(salt), iv: toHex(iv), encrypted: toHex(new Uint8Array(encrypted))};
+    return {version, network, salt: toHex(salt), iv: toHex(iv), encrypted: toHex(new Uint8Array(encrypted))};
   } finally {
     bytes.fill(0);
   }
 }
 
-async function decryptMnemonic(vault, password) {
-  if (vault?.version !== version || vault.network !== 'regtest'
+async function decryptMnemonic(vault, password, network = 'regtest') {
+  if (vault?.version !== version || vault.network !== network
       || typeof vault.salt !== 'string' || !/^[0-9a-f]{32}$/.test(vault.salt)
       || typeof vault.iv !== 'string' || !/^[0-9a-f]{24}$/.test(vault.iv)
       || typeof vault.encrypted !== 'string' || !/^(?:[0-9a-f]{2}){32,256}$/.test(vault.encrypted)) {

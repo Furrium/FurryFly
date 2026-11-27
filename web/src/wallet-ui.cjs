@@ -5,7 +5,8 @@ const {drawReceiveQR} = require('./receive-qr.cjs');
 const {t, i18nError, translateError, getLanguage, setLanguage, applyTranslations} = require('./i18n.cjs');
 
 const $ = id => document.getElementById(id);
-const dbName = 'transfur-regtest-wallet';
+let dbName = 'transfur-regtest-wallet';
+let network = null;
 const unlockMs = 5 * 60 * 1000;
 let db;
 let vault;
@@ -65,10 +66,28 @@ function renderLanguage() {
   }
   for (const [id, {key, params}] of localizedNodes) $(id).textContent = t(key, params);
   renderMessage();
+  renderNetwork();
   if (addresses?.length) {
     renderReceive();
     renderActivity();
   }
+}
+
+function renderNetwork() {
+  if (!network) return;
+  setCopy('network-label', network.name === 'main' ? 'network.main' : 'network.regtest');
+  setCopy('notice-title', network.name === 'main' ? 'app.mainnetFunds' : 'app.testFunds');
+  setCopy('notice-text', network.name === 'main' ? 'app.mainnetCaution' : 'app.mainnetWarning');
+}
+
+async function loadNetwork() {
+  const status = await api('/api/status');
+  if (!['regtest', 'main'].includes(status.network) || !Number.isInteger(status.coinbaseMaturity)) {
+    throw i18nError('error.nodeNetwork');
+  }
+  network = {name: status.network, maturity: status.coinbaseMaturity};
+  dbName = `transfur-${network.name}-wallet`;
+  renderNetwork();
 }
 
 function attachLanguagePicker() {
@@ -230,7 +249,7 @@ async function readFunds(current) {
   const pages = await Promise.all(owned.map(address => api(`/api/coins?address=${encodeURIComponent(address)}`)));
   if (!current()) return null;
   const height = pages[0].height;
-  if (pages.some(page => page.network !== 'regtest' || page.height !== height || !Array.isArray(page.coins))) {
+  if (pages.some(page => page.network !== network.name || page.height !== height || !Array.isArray(page.coins))) {
     throw i18nError('error.nodeNetwork');
   }
   const coins = pages.flatMap((page, i) => validateCoins(page.coins, [owned[i]], height));
@@ -250,7 +269,7 @@ async function refresh(current) {
     $('available').textContent = formatAmount(available);
     $('pending').textContent = formatAmount(pending);
     $('immature').textContent = formatAmount(immature);
-    setCopy('chain-state', 'balance.block', {height: snapshot.height});
+    setCopy('chain-state', network.name === 'main' ? 'balance.blockMain' : 'balance.block', {height: snapshot.height});
     return snapshot;
   } catch (error) {
     if (current()) {
@@ -345,11 +364,11 @@ async function loadActivity(current) {
   const pages = await Promise.all(owned.map(address => api(`/api/history?address=${encodeURIComponent(address)}`)));
   if (!current()) return null;
   const height = pages[0]?.height;
-  if (!Number.isSafeInteger(height) || pages.some(page => page.network !== 'regtest' || page.height !== height
+  if (!Number.isSafeInteger(height) || pages.some(page => page.network !== network.name || page.height !== height
       || !Array.isArray(page.transactions))) {
     throw i18nError('error.nodeNetwork');
   }
-  activity = mergeActivity(pages, owned, height);
+  activity = mergeActivity(pages, owned, height, network.maturity);
   renderActivity();
   return activity;
 }
@@ -397,7 +416,7 @@ function attach() {
     const phrase = $('restore-phrase').value;
     $('setup-form').reset();
     try {
-      const created = await signer(mode, {password, phrase});
+      const created = await signer(mode, {password, phrase, network: network.name});
       if (!current()) return;
       addresses = created.addresses;
       receiveAddresses = created.receiveAddresses;
@@ -435,7 +454,7 @@ function attach() {
   $('unlock-form').onsubmit = operate(async current => {
     const password = $('password').value;
     $('unlock-form').reset();
-    const opened = await signer('unlock', {vault, password});
+    const opened = await signer('unlock', {vault, password, network: network.name});
     if (!current()) return;
     addresses = opened.addresses;
     receiveAddresses = opened.receiveAddresses;
@@ -518,11 +537,13 @@ function attach() {
 }
 
 async function main() {
+  screen('setup');
   attachLanguagePicker();
   if (!globalThis.isSecureContext || !globalThis.crypto?.subtle || !globalThis.indexedDB || !globalThis.Worker
       || typeof $('review').showModal !== 'function' || typeof globalThis.AbortSignal?.timeout !== 'function') {
     throw i18nError('error.unsupportedBrowser');
   }
+  await loadNetwork();
   db = await openDb();
   vault = await storage();
   attach();

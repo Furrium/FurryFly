@@ -1,8 +1,9 @@
 # TRANSFUR browser wallet — Regtest preview
 
-This is a separate browser-only client. It does not start or need Electron,
-never uses mainnet, and has not been audited for real funds. **Never paste a real
-wallet's recovery phrase into this preview.**
+This is a separate browser-only client. It does not start or need Electron. It
+defaults to regtest; an optional local mainnet preview is documented below, but
+nothing in this repository has been audited for real funds. **Never paste a real
+wallet's recovery phrase into the regtest preview.**
 
 ## Run locally
 
@@ -98,14 +99,23 @@ limits before hosting for anyone else. This version has not been deployed.
   transactions, not the phrase or password. Clearing browser data can remove the
   local vault; the phrase is the only recovery method.
 
-## Mainnet is not enabled
+## Mainnet preview (only after a full sync)
 
-This preview is intentionally locked to `regtest` and `rs1…` addresses. A real
-mainnet preview needs a fully synced **mainnet** hsd full node with both address
-and transaction indexes, a separate network/address-format configuration, and a
-reviewed fee/broadcast policy. Do not point this client at mainnet by changing
-one string. The local mainnet node smoke test is only a connectivity and sync
-check; it does not authorize real transfers.
+The same static wallet can run against mainnet when the API is started with
+`TRANSFUR_WEB_NETWORK=main`. It uses `hs1…` addresses, mainnet coinbase maturity,
+a separate browser vault (`transfur-mainnet-wallet`) and the `MAINNET` label.
+
+```sh
+# The node needs a fully synced main directory with both indexes.
+TRANSFUR_MAINNET_PREFIX=/path/to/mainnet-profile \
+  npm run start:web-mainnet
+# Open http://127.0.0.1:18445
+```
+
+The server creates no management RPC and binds the wallet API to loopback only.
+Do not expose it publicly. Do not use it until the local node reports the mainnet
+tip and you have tested with a tiny amount; this browser wallet has not been
+audited for real funds. The serverless adapter is still regtest-only.
 
 ## Verify
 

@@ -1,7 +1,6 @@
 const {isMoney} = require('./units.cjs');
-const {COINBASE_MATURITY} = require('./coins.cjs');
 const HEX_ID = /^[a-f0-9]{64}$/;
-const PAY_ADDR = /^rs1[023456789acdefghjklmnpqrstuvwxyz]{39,59}$/;
+const PAY_ADDR = /^(?:rs1|hs1)[023456789acdefghjklmnpqrstuvwxyz]{39,59}$/;
 const MAX_ROWS = 50;
 
 function invalid() {
@@ -28,7 +27,7 @@ function validateRow(row, address, tip) {
     inputsComplete: row.inputsComplete !== false, inputs, outputs};
 }
 
-function summarize(row, own, tip) {
+function summarize(row, own, tip, maturity) {
   let received = 0;
   let spent = 0;
   for (const output of row.outputs) if (own.has(output.address)) received += output.value;
@@ -46,11 +45,11 @@ function summarize(row, own, tip) {
     else if (value < 0) kind = 'sent';
   }
   const state = confirmations === 0 ? 'pending'
-    : row.coinbase && tip + 1 - row.height < COINBASE_MATURITY ? 'immature' : 'confirmed';
+    : row.coinbase && tip + 1 - row.height < maturity ? 'immature' : 'confirmed';
   return {txid: row.txid, height: row.height, time: row.time, kind, value, state, confirmations};
 }
 
-function mergeActivity(pages, addresses, tip) {
+function mergeActivity(pages, addresses, tip, maturity = 2) {
   if (!Array.isArray(addresses) || !Array.isArray(pages) || pages.length !== addresses.length
       || !Number.isSafeInteger(tip) || tip < 0 || tip > 0x7ffffffe) throw invalid();
   const byID = new Map();
@@ -79,7 +78,8 @@ function mergeActivity(pages, addresses, tip) {
   const own = new Set(addresses);
   const rows = [...byID.values()].sort((a, b) => (a.height < 0 ? 0 : 1) - (b.height < 0 ? 0 : 1)
     || b.height - a.height || b.time - a.time || a.txid.localeCompare(b.txid));
-  return {truncated: truncated || rows.length > MAX_ROWS, rows: rows.slice(0, MAX_ROWS).map(row => summarize(row, own, tip))};
+  if (!Number.isSafeInteger(maturity) || maturity < 0) throw invalid();
+  return {truncated: truncated || rows.length > MAX_ROWS, rows: rows.slice(0, MAX_ROWS).map(row => summarize(row, own, tip, maturity))};
 }
 
 module.exports = {mergeActivity};

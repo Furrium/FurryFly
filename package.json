@@ -8,6 +8,7 @@
     "build": "node ./scripts/package.js",
     "build:web-wallet": "webpack --config web/webpack.config.cjs",
     "start:web-wallet": "node web/regtest.cjs serve",
+    "start:web-mainnet": "node web/mainnet.cjs",
     "test:web-wallet": "node --test web/tests/*.test.cjs",
     "test:web-wallet:browser": "node web/tests/browser.e2e.cjs",
     "build-renderer": "cross-env NODE_ENV=production webpack --config ./configs/webpack.config.renderer.prod.babel.js",

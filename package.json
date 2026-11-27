@@ -10,7 +10,7 @@
     "start:web-wallet": "node web/regtest.cjs serve",
     "start:web-mainnet": "node web/mainnet.cjs",
     "test:web-wallet": "node --test web/tests/*.test.cjs",
-    "test:web-wallet:browser": "node web/tests/browser.e2e.cjs",
+    "test:web-wallet:browser": "node web/tests/browser.e2e.cjs && node web/tests/mainnet-ui.e2e.cjs",
     "build-renderer": "cross-env NODE_ENV=production webpack --config ./configs/webpack.config.renderer.prod.babel.js",
     "dev": "cross-env START_HOT=1 npm run start-renderer-dev",
     "package-dir": "npm run build && node scripts/package-desktop.js --dir",

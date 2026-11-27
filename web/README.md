@@ -133,7 +133,10 @@ this checkout. Install Playwright's Chromium for the default launch, or set
 starts its own regtest with a random port, blocks non-local requests, checks the
 320px layout, the receive QR and five address choices, the native confirmation
 dialog's keyboard behavior, the English/Chinese switch, pending and confirmed
-activity, a browser-signed payment, and vault persistence and recovery.
+activity, a browser-signed payment, and vault persistence and recovery. A second
+isolated check mocks a mainnet API and verifies the `MAINNET` label, `hs1`
+address, mainnet confirmation maturity, and `transfur-mainnet-wallet` vault name
+without any real funds.
 
 ## Web platform guidance
 

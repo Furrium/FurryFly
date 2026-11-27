@@ -86,7 +86,7 @@ async function loadNetwork() {
     throw i18nError('error.nodeNetwork');
   }
   network = {name: status.network, maturity: status.coinbaseMaturity};
-  dbName = `transfur-${network.name}-wallet`;
+  dbName = `transfur-${network.name === 'main' ? 'mainnet' : network.name}-wallet`;
   renderNetwork();
 }
 

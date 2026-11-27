@@ -7,8 +7,8 @@ const toHex = bytes => Array.from(bytes, value => value.toString(16).padStart(2,
 const fromHex = hex => Uint8Array.from(hex.match(/../g), byte => parseInt(byte, 16));
 
 async function keyFor(password, salt) {
-  if (typeof password !== 'string' || password.length < 12 || password.length > 128) {
-    throw new Error('Use a password between 12 and 128 characters.');
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    throw new Error('Use a password between 8 and 128 characters.');
   }
   const bytes = encoder.encode(password);
   try {

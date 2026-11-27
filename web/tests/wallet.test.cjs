@@ -34,6 +34,13 @@ test('the local vault encrypts with unique salt/IV and rejects tampering', async
   await assert.rejects(decryptMnemonic({...first, network: 'main'}, password), /unsupported/);
 });
 
+test('the vault accepts the desktop minimum of eight characters', async () => {
+  await assert.rejects(encryptMnemonic(phrase, '1234567'), /between 8 and 128/);
+  await assert.rejects(encryptMnemonic(phrase, 'x'.repeat(129)), /between 8 and 128/);
+  const password = 'regtest8';
+  assert.equal(await decryptMnemonic(await encryptMnemonic(phrase, password), password), phrase);
+});
+
 test('BIP39 checksums and regtest receive/change derivation are enforced', () => {
   const generated = newPhrase();
   assert.equal(generated.split(' ').length, 12);

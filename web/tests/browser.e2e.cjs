@@ -44,7 +44,7 @@ async function main() {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(service.origin);
     await page.locator('[data-language="en"]').click();
-    const password = 'regtest browser only 21';
+    const password = 'regtest8';
     const id = name => page.locator(`#${name}`);
     await id('new-password').fill(password);
     await id('repeat-password').fill(password);

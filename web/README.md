@@ -86,11 +86,15 @@ limits before hosting for anyone else. This version has not been deployed.
   is signed only after confirming the reviewed recipient, amount and fee. Locking
   terminates the worker; this does not guarantee memory zeroization in JavaScript.
   Anyone controlling the app origin or browser can still compromise its wallet.
-- Only regtest payments (`NONE` outputs), five fixed receive addresses plus one
-  change address (BIP44 account 0, indexes 0–4), and confirmed/mature inputs.
-  The interface supports English and Simplified Chinese, follows the browser
-  language by default, and remembers the choice. No gap scan, old account
-  discovery, Ledger, auctions or mainnet support.
+- The default regtest preview supports plain payments (`NONE` outputs) with
+  confirmed/mature inputs. Recovery, unlock, and refresh check BIP44 account 0,
+  indexes 0–19 on both receive and change branches, even across unused gaps.
+  It can spend from outputs on either branch, but new change still goes to index
+  0. This is a fixed window, not a full desktop rescan: other accounts, imported
+  keys, multisig, and higher indexes are not discovered. The optional mainnet
+  preview retains its original five receive addresses and one change address.
+  No Ledger or auctions. The English/Simplified Chinese interface follows the
+  browser language by default and remembers the user's choice.
 - Recent activity comes from a capped, indexed history view. Pending rows,
   confirmations and immature rewards are displayed; incomplete input data is
   never guessed into a direction, and a capped result is labelled as truncated.
@@ -131,7 +135,8 @@ to its absolute `node_modules/playwright` path, or make it resolvable from
 this checkout. Install Playwright's Chromium for the default launch, or set
 `TRANSFUR_BROWSER_CHANNEL=chrome` to use an existing Google Chrome. The test
 starts its own regtest with a random port, blocks non-local requests, checks the
-320px layout, the receive QR and five address choices, the native confirmation
+320px layout, shared desktop theme, receive QR and 20 address choices, recovery
+against hsd wallet-derived addresses on both branches, the native confirmation
 dialog's keyboard behavior, the English/Chinese switch, pending and confirmed
 activity, a browser-signed payment, and vault persistence and recovery. A second
 isolated check mocks a mainnet API and verifies the `MAINNET` label, `hs1`

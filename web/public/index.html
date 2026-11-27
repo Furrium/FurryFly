@@ -42,8 +42,8 @@
         <label id="restore-field" hidden><span data-i18n="setup.recoveryPhrase"></span>
           <textarea id="restore-phrase" lang="en" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="240" rows="3"></textarea>
         </label>
-        <label><span data-i18n="vault.password"></span> <input id="new-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
-        <label><span data-i18n="setup.confirmPassword"></span> <input id="repeat-password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+        <label><span data-i18n="vault.password"></span> <input id="new-password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
+        <label><span data-i18n="setup.confirmPassword"></span> <input id="repeat-password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label>
         <p class="hint" data-i18n="setup.passwordHint"></p>
         <button id="setup-submit" class="primary" type="submit" data-i18n="setup.createSubmit"></button>
       </form>
@@ -73,6 +73,7 @@
         <h2 data-i18n="balance.title"></h2>
         <div class="amount"><span id="available">—</span> <small data-i18n="units.hns"></small></div>
         <p class="hint"><span data-i18n="balance.pending"></span> <span id="pending">—</span> <span data-i18n="units.hns"></span> <span aria-hidden="true">·</span> <span data-i18n="balance.immature"></span> <span id="immature">—</span> <span data-i18n="units.hns"></span></p>
+        <p id="recovery-scope" class="hint" data-i18n="balance.recoveryScope" hidden></p>
         <div class="balance-footer"><span id="chain-state" data-i18n="balance.unchecked"></span><button id="refresh" class="quiet" type="button" data-i18n="balance.refresh"></button></div>
       </article>
       <article class="card receive">

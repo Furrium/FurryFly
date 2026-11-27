@@ -34,15 +34,24 @@ test('the local vault encrypts with unique salt/IV and rejects tampering', async
   await assert.rejects(decryptMnemonic({...first, network: 'main'}, password), /unsupported/);
 });
 
+test('the vault accepts the desktop minimum of eight characters', async () => {
+  await assert.rejects(encryptMnemonic(phrase, '1234567'), /between 8 and 128/);
+  await assert.rejects(encryptMnemonic(phrase, 'x'.repeat(129)), /between 8 and 128/);
+  const password = 'regtest8';
+  assert.equal(await decryptMnemonic(await encryptMnemonic(phrase, password), password), phrase);
+});
+
 test('BIP39 checksums and regtest receive/change derivation are enforced', () => {
   const generated = newPhrase();
   assert.equal(generated.split(' ').length, 12);
   assert.equal(openWallet(generated).phrase, generated);
   assert.throws(() => openWallet('abandon '.repeat(12)), /checksum/);
   const {addresses, receiveAddresses, changeRing} = openWallet(phrase);
-  assert.equal(receiveAddresses.length, 5);
-  assert.equal(new Set(addresses).size, 6);
-  assert.deepEqual(addresses, [...receiveAddresses, changeRing.getAddress().toString('regtest')]);
+  assert.equal(receiveAddresses.length, 20);
+  assert.equal(addresses.length, 40);
+  assert.equal(new Set(addresses).size, 40);
+  assert.deepEqual(addresses.slice(0, 20), receiveAddresses);
+  assert.equal(addresses[20], changeRing.getAddress().toString('regtest'));
   assert.deepEqual(openWallet(phrase.toUpperCase()).addresses, addresses);
   assert.ok(addresses.every(address => /^rs1/.test(address)));
 });

@@ -19,7 +19,8 @@ function networkFor(name) {
 }
 const feeRate = 2_000;
 const maxFee = 10_000;
-const RECEIVE_COUNT = 5;
+// Fixed recovery window; scan past empty addresses instead of guessing a gap limit.
+const REGTEST_BRANCH_DEPTH = 20;
 
 function newPhrase() {
   return new Mnemonic({bits: 128, language: 'english'}).getPhrase();
@@ -46,14 +47,16 @@ function openWallet(phrase, networkName = 'regtest') {
   let root;
   try { root = HDPrivateKey.fromSeed(seed); } finally { seed.fill(0); }
   const account = root.deriveAccount(44, network.keyPrefix.coinType, 0);
-  const receiveBranch = account.derive(0);
-  const receiveRings = Array.from({length: RECEIVE_COUNT}, (_, index) => (
-    KeyRing.fromPrivate(receiveBranch.derive(index).privateKey)
-  ));
-  const changeRing = KeyRing.fromPrivate(account.derive(1).derive(0).privateKey);
-  const receiveAddresses = receiveRings.map(ring => ring.getAddress().toString(network));
-  const addresses = [...receiveAddresses, changeRing.getAddress().toString(network)];
-  return {rings: [...receiveRings, changeRing], addresses, receiveAddresses, changeRing,
+  function deriveBranch(branch, count) {
+    const key = account.derive(branch);
+    return Array.from({length: count}, (_, index) => KeyRing.fromPrivate(key.derive(index).privateKey));
+  }
+  const receiveRings = deriveBranch(0, networkName === 'regtest' ? REGTEST_BRANCH_DEPTH : 5);
+  const changeRings = deriveBranch(1, networkName === 'regtest' ? REGTEST_BRANCH_DEPTH : 1);
+  const rings = [...receiveRings, ...changeRings];
+  const addresses = rings.map(ring => ring.getAddress().toString(network));
+  const receiveAddresses = addresses.slice(0, receiveRings.length);
+  return {rings, addresses, receiveAddresses, changeRing: changeRings[0],
     networkName, maturity: network.coinbaseMaturity, phrase: mnemonic.getPhrase()};
 }
 

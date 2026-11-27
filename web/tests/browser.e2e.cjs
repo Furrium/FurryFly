@@ -2,6 +2,23 @@ const assert = require('node:assert/strict');
 const {startRegtest} = require('../regtest.cjs');
 const {chromium} = require(process.env.TRANSFUR_PLAYWRIGHT_MODULE || 'playwright');
 const KeyRing = require('hsd/lib/primitives/keyring');
+const WalletDB = require('hsd/lib/wallet/walletdb');
+const Mnemonic = require('hsd/lib/hd/mnemonic');
+const {formatAmount} = require('../src/units.cjs');
+
+async function desktopAddresses(phrase) {
+  const db = new WalletDB({network: 'regtest', memory: true});
+  await db.open();
+  try {
+    const wallet = await db.create({id: 'recovery-fixture', mnemonic: Mnemonic.fromPhrase(phrase)});
+    const account = await wallet.getAccount(0);
+    const address = (branch, index) => account.deriveKey(branch, index).getAddress().toString('regtest');
+    return {first: address(0, 0), lateReceive: address(0, 19),
+      changes: [address(1, 7), address(1, 19)], outsideWindow: address(0, 20)};
+  } finally {
+    await db.close();
+  }
+}
 
 async function visible(locator) { await locator.waitFor({state: 'visible', timeout: 15_000}); }
 async function text(locator, expected) {
@@ -27,7 +44,7 @@ async function main() {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(service.origin);
     await page.locator('[data-language="en"]').click();
-    const password = 'regtest browser only 21';
+    const password = 'regtest8';
     const id = name => page.locator(`#${name}`);
     await id('new-password').fill(password);
     await id('repeat-password').fill(password);
@@ -42,13 +59,20 @@ async function main() {
     assert.equal(await id('backup-words').locator('li').count(), 0);
     const receive = await id('receive-address').textContent();
     assert.match(receive, /^rs1[0-9a-z]+$/);
-    assert.equal(await id('receive-select').locator('option').count(), 5);
+    assert.equal(await id('receive-select').locator('option').count(), 20);
     assert.equal(await id('receive-qr').locator('path').count(), 1);
     assert.match(await id('receive-qr').getAttribute('viewBox'), /^0 0 \d+ \d+$/);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert.deepEqual(await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const button = getComputedStyle(document.querySelector('#prepare'));
+      const panel = getComputedStyle(document.querySelector('.receive'));
+      return [root.backgroundColor, panel.backgroundColor, button.backgroundColor, button.borderRadius];
+    }), ['rgb(8, 11, 17)', 'rgb(17, 22, 31)', 'rgb(92, 255, 208)', '999px']);
     await page.locator('[data-language="zh-CN"]').click();
     assert.match(await page.locator('[data-i18n="balance.title"]').textContent(), /可用余额/);
-    assert.match(await id('receive-select').locator('option').first().textContent(), /地址 1\/5/);
+    assert.match(await id('receive-select').locator('option').first().textContent(), /地址 1\/20/);
+    assert.match(await id('recovery-scope').textContent(), /前 20 个找零地址/);
     await page.locator('[data-language="en"]').click();
 
     await service.fund(receive);
@@ -116,7 +140,11 @@ async function main() {
     }));
     assert.deepEqual(Object.keys(vault).sort(), ['encrypted', 'iv', 'network', 'salt', 'version']);
     assert.match(vault.encrypted, /^[0-9a-f]+$/);
-    const epoch = await browser.newContext();
+    const desktop = await desktopAddresses(words.join(' '));
+    assert.equal(desktop.first, receive);
+    for (const address of [desktop.lateReceive, ...desktop.changes, desktop.outsideWindow]) await service.fund(address);
+    const expectedRecovered = formatAmount(8_000_000_000 - 2_500_000 - Math.round(fee * 1_000_000));
+    const epoch = await browser.newContext({locale: 'en-US'});
     await epoch.route('**/*', route => new URL(route.request().url()).origin === service.origin ? route.continue() : route.abort());
     const restore = await epoch.newPage();
     await restore.goto(service.origin);
@@ -126,6 +154,22 @@ async function main() {
     await restore.locator('#repeat-password').fill(password);
     await restore.locator('#setup-submit').click();
     await text(restore.locator('#receive-address'), receive);
+    await text(restore.locator('#available'), expectedRecovered);
+    await restore.waitForFunction(() => document.querySelectorAll('#activity-list .activity-row').length === 5);
+    await restore.locator('#receive-select').selectOption('19');
+    await text(restore.locator('#receive-address'), desktop.lateReceive);
+    // No three in-range outputs are sufficient; signing must include both high-index change keys.
+    await restore.locator('#recipient').fill(recipient);
+    await restore.locator('#amount').fill('6500');
+    await restore.locator('#prepare').click();
+    await visible(restore.locator('#review'));
+    await restore.locator('#broadcast').click();
+    await visible(restore.locator('#receipt'));
+    await text(restore.locator('#receipt-title'), 'Submitted to the node');
+    const restoredTxid = await restore.locator('#txid').textContent();
+    const recoveredHeight = (await service.mine()).height;
+    assert.ok((await utxos()).some(coin => coin.hash === restoredTxid && coin.value === 6_500_000_000
+      && coin.height === recoveredHeight));
     await epoch.close();
     assert.ok(requests.every(request => request.origin === service.origin));
     assert.equal(requests.filter(request => request.method === 'POST').length, 1);

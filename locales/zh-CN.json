@@ -2224,5 +2224,8 @@
   "headingRegister": "注册",
   "registerHeadline": "查找或注册域名",
   "registerHint": "输入一个域名查看它的状态。在详情页可以出价、注册，或查看当前持有人。",
-  "headingDomainInfo": "域名信息"
+  "headingDomainInfo": "域名信息",
+  "pendingFinalizeTitle": "有 %s 个域名等待完成转移",
+  "pendingFinalizeHelp": "这些域名已经转到你的地址，但还需要广播一笔「完成转移」交易才能真正拿到。",
+  "pendingFinalizeOpenMarket": "前往市场"
 }

@@ -2224,5 +2224,8 @@
   "headingRegister": "Register",
   "registerHeadline": "Find or register a name",
   "registerHint": "Enter a name to see where it stands. From its page you can bid, register, or see who holds it.",
-  "headingDomainInfo": "Domain info"
+  "headingDomainInfo": "Domain info",
+  "pendingFinalizeTitle": "%s names are waiting to be finalized",
+  "pendingFinalizeHelp": "These names have transferred to your address. Each one still needs a finalize transaction before you actually receive it.",
+  "pendingFinalizeOpenMarket": "Open marketplace"
 }

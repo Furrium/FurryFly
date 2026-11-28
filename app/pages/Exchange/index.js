@@ -8,6 +8,7 @@ import { shell } from 'electron';
 import { clientStub as aClientStub } from '../../background/analytics/client.js';
 import { clientStub as sClientStub } from '../../background/shakedex/client.js';
 import { HeaderItem, HeaderRow, Table, TableItem, TableRow } from '../../components/Table';
+import PendingFinalizeNotice from '../../components/PendingFinalizeNotice';
 import {
   getExchangeAuctions,
   finalizeExchangeBid,
@@ -1414,6 +1415,15 @@ export class Exchange extends Component {
     )
   }
 
+  // The notice lists names; the action needs the whole fill record. Looking it up here
+  // keeps the component from having to know the shape of a fulfillment.
+  onFinalizePurchase = (name) => {
+    const record = (this.props.fulfillments || []).find(f => f.fulfillment.name === name);
+    if (record) {
+      this.props.finalizeExchangeBid(record.fulfillment);
+    }
+  };
+
   render() {
     const { t } = this.context;
     if (this.props.walletWatchOnly) {
@@ -1441,6 +1451,12 @@ export class Exchange extends Component {
     const visibleListings = this.getVisibleListings();
     const listingStatusItems = this.getListingsStatusItems();
     const listingSortItems = this.getListingsSortItems();
+    // A fill whose name has transferred but whose swap is not finalized yet. The buyer has
+    // to broadcast one more transaction to actually receive the name, so this is work
+    // waiting on them rather than a status to read.
+    const pendingFinalize = (this.props.fulfillments || [])
+      .filter(f => f.status === FULFILLMENT_STATUS.CONFIRMED)
+      .map(f => f.fulfillment.name);
 
     return (
       <div className="exchange">
@@ -1453,6 +1469,11 @@ export class Exchange extends Component {
             </div>
           </div>
         )}
+        <PendingFinalizeNotice
+          names={pendingFinalize}
+          finalizingName={this.props.finalizingName}
+          onFinalize={this.onFinalizePurchase}
+        />
         {this.isMarketplaceVisible() && this.renderReadinessPanel()}
         {this.isMarketplaceVisible() ? <>
           <div className="exchange-marketplace-header">

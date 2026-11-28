@@ -86,6 +86,7 @@ require('./app/ducks/tests/pendingTransactions.spec');
 require('./app/ducks/tests/nameRequestLifecycle.spec');
 require('./app/ducks/tests/namesAuctionBasket.spec');
 require('./app/ducks/tests/walletStats.spec');
+require('./app/ducks/tests/exchangeFinalize.spec');
 require('./app/utils/tests/auctionDomain.spec');
 require('./app/utils/tests/nameDisplay.spec');
 

@@ -26,6 +26,7 @@ import {
   FULFILLMENT_STATUS,
   getExchangeFullfillments,
   getExchangeListings,
+  pendingFinalizeNames,
   setAuctionPage,
   submitToShakedex,
 } from "../../ducks/exchange";
@@ -1454,9 +1455,7 @@ export class Exchange extends Component {
     // A fill whose name has transferred but whose swap is not finalized yet. The buyer has
     // to broadcast one more transaction to actually receive the name, so this is work
     // waiting on them rather than a status to read.
-    const pendingFinalize = (this.props.fulfillments || [])
-      .filter(f => f.status === FULFILLMENT_STATUS.CONFIRMED)
-      .map(f => f.fulfillment.name);
+    const pendingFinalize = pendingFinalizeNames(this.props.fulfillments);
 
     return (
       <div className="exchange">
@@ -2535,6 +2534,10 @@ export default connect(
     isCustomRPCConnected: state.node.isCustomRPCConnected,
     network: state.wallet.network,
     height: state.node.chain.height,
+    // Read by the finalize buttons to show progress and to stay disabled while a
+    // finalize is in flight. It was never mapped, so the label never changed and the
+    // button stayed clickable - on an action that spends a transaction, twice.
+    finalizingName: state.exchange.finalizingName,
   }),
   (dispatch) => ({
     setAuctionPage: (page) => dispatch(setAuctionPage(page)),

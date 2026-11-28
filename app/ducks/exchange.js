@@ -85,6 +85,26 @@ export const FULFILLMENT_STATUS = {
   FINALIZING: 'FINALIZING',
 };
 
+// The one state that can actually be finalized, and the one that looks closest to it.
+//
+// CONFIRMED means the transfer lockup has elapsed and a finalize would be accepted.
+// CONFIRMED_LOCKUP means the name is on its way but finalizing now would be rejected - the
+// names read as if the second state were the later one, so this is written down once here
+// rather than re-derived at each call site.
+export const pendingFinalizeNames = (fulfillments = []) => (fulfillments || [])
+  .filter(fulfillment => fulfillment && fulfillment.status === FULFILLMENT_STATUS.CONFIRMED)
+  .map(fulfillment => fulfillment.fulfillment && fulfillment.fulfillment.name)
+  .filter(Boolean);
+
+// Drops the marketplace purchases from a list of names the wallet also considers ready to
+// finalize. Both are reported for the same name, but only the marketplace holds the swap
+// data the completing transaction is built from, so the wallet-level entry must not claim
+// a purchase it cannot finish.
+export const withoutPendingFinalize = (names = [], fulfillments = []) => {
+  const pending = new Set(pendingFinalizeNames(fulfillments));
+  return (names || []).filter(name => !pending.has(name));
+};
+
 
 function getInitialState() {
   return {

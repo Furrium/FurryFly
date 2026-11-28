@@ -10,13 +10,14 @@ import { clientStub as aClientStub } from '../../background/analytics/client';
 import * as walletActions from '../../ducks/walletActions';
 import * as myDomainsActions from '../../ducks/myDomains';
 import * as nodeActions from '../../ducks/node';
-import { getExchangeListings } from '../../ducks/exchange';
+import { getExchangeListings, getExchangeFullfillments, finalizeExchangeBid, pendingFinalizeNames, withoutPendingFinalize } from '../../ducks/exchange';
 import { LISTING_STATUS } from '../../constants/exchange';
 import { BIDS_FILTER_NEED_REVEAL, NAME_STATES } from '../../constants/names';
 import { MARKETPLACE_STATUS } from '../../utils/marketplaceRequest';
 import { I18nContext } from '../../utils/i18n';
 import {fetchWalletStats} from '../../ducks/walletStats';
 import BalanceSummary from './BalanceSummary';
+import PendingFinalizeNotice from '../../components/PendingFinalizeNotice';
 import walletClient from '../../utils/walletClient';
 import AuctionSummaryStatus from './AuctionSummaryStatus';
 import {balanceReadiness} from '../../utils/balanceReadiness';
@@ -73,6 +74,8 @@ const ACTIVE_LISTING_STATUSES = new Set([
     isLoadingListings: state.exchange.isLoadingListings,
     marketplaceStatus: state.exchange.marketplaceStatus,
     marketplaceError: state.exchange.marketplaceError,
+    fulfillments: state.exchange.fulfillments,
+    finalizingName: state.exchange.finalizingName,
     walletStats: state.walletStats,
     receiveAddress: state.wallet.receiveAddress || '',
   }),
@@ -81,6 +84,8 @@ const ACTIVE_LISTING_STATUSES = new Set([
     updateHNSPrice: () => dispatch(nodeActions.updateHNSPrice()),
     getMyNames: () => dispatch(myDomainsActions.getMyNames()),
     getExchangeListings: () => dispatch(getExchangeListings()),
+    getExchangeFullfillments: () => dispatch(getExchangeFullfillments()),
+    finalizeExchangeBid: (fulfillment) => dispatch(finalizeExchangeBid(fulfillment)),
     fetchWalletStats: () => dispatch(fetchWalletStats()),
     setSyncEnabled: enabled => dispatch(nodeActions.setSyncEnabled(enabled)),
   })
@@ -132,6 +137,10 @@ export default class Overview extends Component {
     this.props.fetchWallet();
     this.props.getMyNames();
     this.props.getExchangeListings();
+    // A marketplace purchase needs a second transaction before the name arrives, and the
+    // page the buyer opens first is this one. Fetching fills alongside listings keeps the
+    // outstanding step visible here instead of only where the purchase was made.
+    this.props.getExchangeFullfillments();
     this.updateStats();
   }
 
@@ -197,6 +206,20 @@ export default class Overview extends Component {
     return listings.filter((listing) => ACTIVE_LISTING_STATUSES.has(listing.status)).length;
   }
 
+  // Fills whose name has transferred but whose swap is not finalized yet. The buyer has to
+  // broadcast one more transaction to receive the name, so this is work waiting on them.
+  getMarketplaceFinalizeNames() {
+    return pendingFinalizeNames(this.props.fulfillments);
+  }
+
+  // The notice lists names; the action needs the whole fill record.
+  onFinalizePurchase = (name) => {
+    const record = (this.props.fulfillments || []).find(f => f.fulfillment.name === name);
+    if (record) {
+      this.props.finalizeExchangeBid(record.fulfillment);
+    }
+  };
+
   getActionItems() {
     const { t } = this.context;
     const { network } = this.props;
@@ -259,13 +282,22 @@ export default class Overview extends Component {
     }
 
     if (finalizable?.domains?.length) {
-      items.push({
-        key: 'finalize',
-        level: 'attention',
-        title: t('overviewActionFinalize', String(finalizable.domains.length)),
-        detail: t('overviewActionOpenDomains'),
-        path: '/domain_manager',
-      });
+      // A name bought on the marketplace is counted as finalizable by the wallet too,
+      // because from the chain's point of view the seller simply transferred it. But the
+      // transaction that completes a purchase is built from the swap, which only the
+      // marketplace has, so those names are advertised by the notice above instead. One
+      // name, one entry, pointing at the mechanism that actually finishes it.
+      const finalizableHere = withoutPendingFinalize(finalizable.domains, this.props.fulfillments);
+
+      if (finalizableHere.length) {
+        items.push({
+          key: 'finalize',
+          level: 'attention',
+          title: t('overviewActionFinalize', String(finalizableHere.length)),
+          detail: t('overviewActionOpenDomains'),
+          path: '/domain_manager',
+        });
+      }
     }
 
     if (transferring?.domains?.length) {
@@ -357,6 +389,11 @@ export default class Overview extends Component {
     return (
       <div className="overview">
         {this.renderHero()}
+        <PendingFinalizeNotice
+          names={this.getMarketplaceFinalizeNames()}
+          finalizingName={this.props.finalizingName}
+          onFinalize={this.onFinalizePurchase}
+        />
         {this.renderSyncControl()}
         {this.renderActionCenter(actionItems)}
         {this.renderPortfolioAndAuctions()}
